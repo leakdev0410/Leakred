@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leakred Downloader — Tải video & ảnh từ TikTok, Instagram, Facebook</title>
+  <meta name="description" content="Tải video và ảnh từ TikTok, Instagram, Facebook không kèm logo. Dán link và tải về ngay." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg-gradient"></div>
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
+
+  <main class="container">
+    <header class="header">
+      <div class="logo">
+        <span class="logo-mark">L</span>
+        <span class="logo-text">Leakred</span>
+      </div>
+      <h1 class="title">Tải video & ảnh <span class="gradient-text">không logo</span></h1>
+      <p class="tagline">Dán link TikTok, Instagram hoặc Facebook — tải ngay trong vài giây.</p>
+    </header>
+
+    <section class="card glass input-card">
+      <div class="platforms">
+        <div class="platform-badge" data-platform="tiktok" title="TikTok">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16.5 3a5.5 5.5 0 0 0 4.5 4.5v3a8.5 8.5 0 0 1-4.5-1.3v6.3a6 6 0 1 1-6-6c.34 0 .67.03 1 .09v3.18a3 3 0 1 0 2 2.83V3h3z"/></svg>
+          <span>TikTok</span>
+        </div>
+        <div class="platform-badge" data-platform="instagram" title="Instagram">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2.2c3.2 0 3.6 0 4.85.07 1.17.05 1.8.25 2.23.42.56.22.96.48 1.38.9.42.42.68.82.9 1.38.17.42.37 1.06.42 2.23.06 1.25.07 1.63.07 4.8s0 3.55-.07 4.8c-.05 1.17-.25 1.8-.42 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.17-1.06.37-2.23.42-1.25.06-1.63.07-4.85.07s-3.6 0-4.85-.07c-1.17-.05-1.8-.25-2.23-.42a3.7 3.7 0 0 1-1.38-.9 3.7 3.7 0 0 1-.9-1.38c-.17-.42-.37-1.06-.42-2.23C2.2 15.55 2.2 15.17 2.2 12s0-3.55.07-4.8c.05-1.17.25-1.8.42-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.17 1.06-.37 2.23-.42C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.16 0-3.53 0-4.77.07-.97.04-1.5.2-1.85.34-.46.18-.79.4-1.14.75-.35.35-.57.68-.75 1.14-.13.35-.3.88-.34 1.85C3.07 9.4 3.07 9.77 3.07 12s0 2.6.08 3.85c.04.97.2 1.5.34 1.85.18.46.4.79.75 1.14.35.35.68.57 1.14.75.35.13.88.3 1.85.34 1.24.07 1.6.07 4.77.07s3.53 0 4.77-.07c.97-.04 1.5-.2 1.85-.34.46-.18.79-.4 1.14-.75.35-.35.57-.68.75-1.14.13-.35.3-.88.34-1.85.07-1.25.07-1.62.07-3.85s0-2.6-.07-3.85c-.04-.97-.2-1.5-.34-1.85a3 3 0 0 0-.75-1.14 3 3 0 0 0-1.14-.75c-.35-.13-.88-.3-1.85-.34C15.53 4 15.16 4 12 4zm0 3.05a4.95 4.95 0 1 1 0 9.9 4.95 4.95 0 0 1 0-9.9zm0 1.8a3.15 3.15 0 1 0 0 6.3 3.15 3.15 0 0 0 0-6.3zm5.16-1.06a1.16 1.16 0 1 1 0 2.32 1.16 1.16 0 0 1 0-2.32z"/></svg>
+          <span>Instagram</span>
+        </div>
+        <div class="platform-badge" data-platform="facebook" title="Facebook">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M13.5 22v-8h2.7l.4-3.1h-3.1V8.9c0-.9.25-1.5 1.55-1.5h1.65V4.6c-.3-.04-1.3-.13-2.45-.13-2.42 0-4.08 1.48-4.08 4.2v2.23H7.5V14h2.67v8h3.33z"/></svg>
+          <span>Facebook</span>
+        </div>
+      </div>
+
+      <form id="downloadForm" class="input-row" autocomplete="off">
+        <input
+          id="urlInput"
+          type="url"
+          placeholder="Dán link TikTok / Instagram / Facebook tại đây..."
+          aria-label="Đường dẫn cần tải"
+          required
+        />
+        <button type="button" id="pasteBtn" class="btn btn-ghost" title="Dán từ clipboard">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M19 2h-4.18A3 3 0 0 0 12 0a3 3 0 0 0-2.82 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 18H5V4h2v3h10V4h2v16z"/></svg>
+          Dán
+        </button>
+        <button type="submit" id="downloadBtn" class="btn btn-primary">
+          <span class="btn-label">Tải về</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
+      </form>
+
+      <p class="hint" id="hint">Hỗ trợ: video TikTok không watermark · Reel/Post Instagram · Video Facebook</p>
+    </section>
+
+    <section id="result" class="card glass result-card hidden" aria-live="polite"></section>
+
+    <section class="card glass info-card">
+      <h2>Cách dùng</h2>
+      <ol>
+        <li>Mở app TikTok / Instagram / Facebook, chọn video hoặc bài đăng cần tải.</li>
+        <li>Bấm "Chia sẻ" → "Sao chép liên kết".</li>
+        <li>Quay lại trang này, dán link vào ô trên và bấm <strong>Tải về</strong>.</li>
+        <li>Bấm nút <strong>Tải file</strong> để lưu video / ảnh về máy.</li>
+      </ol>
+    </section>
+
+    <footer class="footer">
+      <p>Chỉ dùng cho mục đích cá nhân. Vui lòng tôn trọng bản quyền và quyền riêng tư của tác giả gốc.</p>
+      <p class="muted">Không lưu trữ link hay file phía máy chủ — mọi xử lý đều chạy trên trình duyệt của bạn.</p>
+    </footer>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
