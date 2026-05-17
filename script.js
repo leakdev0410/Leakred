@@ -17,10 +17,11 @@
   ];
   const FETCH_TIMEOUT_MS = 18000;
 
+  // Instagram & Facebook tạm tắt — chưa có API ổn định.
+  // Để bật lại: thêm instagram/facebook vào PLATFORM_PATTERNS và HANDLERS bên dưới,
+  // đồng thời un-hide badge trong index.html.
   const PLATFORM_PATTERNS = {
     tiktok: /(?:^|\.)tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com/i,
-    instagram: /(?:^|\.)instagram\.com/i,
-    facebook: /(?:^|\.)facebook\.com|fb\.watch|(?:^|\.)fb\.com/i,
   };
 
   function detectPlatform(rawUrl) {
@@ -354,8 +355,8 @@
 
   const HANDLERS = {
     tiktok: fetchTikTok,
-    instagram: fetchInstagram,
-    facebook: fetchFacebook,
+    // instagram: fetchInstagram,  // tạm tắt
+    // facebook: fetchFacebook,    // tạm tắt
   };
 
   // ---------- Download helper ----------
@@ -538,7 +539,7 @@
 
     const platform = detectPlatform(url);
     if (!platform) {
-      return showToast("Link không hỗ trợ. Chỉ nhận TikTok, Instagram, Facebook.", "error");
+      return showToast("Link không hỗ trợ. Hiện chỉ nhận link TikTok.", "error");
     }
 
     downloadBtn.disabled = true;
