@@ -55,32 +55,8 @@
   let ffmpeg = null;
   let ffmpegLoading = null;
   let currentBlobUrl = null;
-
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      if ([...document.scripts].some((s) => s.src === src)) return resolve();
-      const s = document.createElement("script");
-      s.src = src;
-      s.crossOrigin = "anonymous";
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error("Script load failed: " + src));
-      document.head.appendChild(s);
-    });
-  }
-
-  async function loadScriptWithFallback(path) {
-    let lastErr;
-    for (const base of CDN_BASES) {
-      try {
-        await loadScript(base + path);
-        return base;
-      } catch (err) {
-        console.warn("[converter] CDN failed:", base + path, err);
-        lastErr = err;
-      }
-    }
-    throw lastErr || new Error("All CDNs failed for " + path);
-  }
+  let toBlobURL = null;
+  let fetchFile = null;
 
   async function ensureFFmpeg() {
     if (ffmpeg) return ffmpeg;
@@ -90,19 +66,32 @@
       showStatus(loadingEl);
       loadingText.textContent = "Đang tải ffmpeg.wasm…";
 
-      await loadScriptWithFallback(`/@ffmpeg/ffmpeg@${FFMPEG_VER}/dist/umd/ffmpeg.js`);
-      await loadScriptWithFallback(`/@ffmpeg/util@${UTIL_VER}/dist/umd/index.js`);
-
-      if (!window.FFmpegWASM || !window.FFmpegUtil) {
-        throw new Error("UMD global ffmpeg/util không xuất hiện sau khi load script.");
+      let FFmpeg;
+      let lastErr;
+      for (const base of CDN_BASES) {
+        try {
+          const [ffmpegMod, utilMod] = await Promise.all([
+            import(`${base}/@ffmpeg/ffmpeg@${FFMPEG_VER}/dist/esm/index.js`),
+            import(`${base}/@ffmpeg/util@${UTIL_VER}/dist/esm/index.js`),
+          ]);
+          FFmpeg = ffmpegMod.FFmpeg;
+          toBlobURL = utilMod.toBlobURL;
+          fetchFile = utilMod.fetchFile;
+          if (!FFmpeg || !toBlobURL || !fetchFile) {
+            throw new Error("module exports thiếu (FFmpeg/toBlobURL/fetchFile)");
+          }
+          break;
+        } catch (err) {
+          console.warn("[converter] ESM load failed from", base, err);
+          lastErr = err;
+          FFmpeg = null;
+        }
       }
-
-      const { FFmpeg } = window.FFmpegWASM;
-      const { toBlobURL } = window.FFmpegUtil;
+      if (!FFmpeg) throw lastErr || new Error("Không load được module ffmpeg/util từ CDN.");
 
       loadingText.textContent = "Đang tải core (~30MB)…";
 
-      let lastErr;
+      let coreErr;
       for (const base of CDN_BASES) {
         const coreBase = `${base}/@ffmpeg/core@${CORE_VER}/dist/umd`;
         try {
@@ -116,10 +105,10 @@
           return ff;
         } catch (err) {
           console.warn("[converter] core load failed from", coreBase, err);
-          lastErr = err;
+          coreErr = err;
         }
       }
-      throw lastErr || new Error("Không tải được ffmpeg-core từ mọi CDN.");
+      throw coreErr || new Error("Không tải được ffmpeg-core từ mọi CDN.");
     })();
 
     try {
@@ -224,7 +213,6 @@
     setProgress(0, "Đang ghi file vào bộ nhớ…");
 
     try {
-      const { fetchFile } = window.FFmpegUtil;
       ff.on("progress", onProgress);
 
       await ff.writeFile(inputName, await fetchFile(file));
