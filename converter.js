@@ -24,11 +24,10 @@
   });
 
   // ---------- Converter (ffmpeg.wasm, single-thread) ----------
-  const FFMPEG_VER = "0.12.15";
-  const UTIL_VER = "0.12.2";
+  // @ffmpeg/ffmpeg + util self-host trong ./vendor (same-origin để Worker chạy được).
+  // Chỉ ffmpeg-core (~30MB wasm) load từ CDN qua toBlobURL.
   const CORE_VER = "0.12.10";
-  // Thử jsdelivr trước (nhanh hơn ở VN/châu Á), fallback unpkg
-  const CDN_BASES = [
+  const CORE_CDN_BASES = [
     "https://cdn.jsdelivr.net/npm",
     "https://unpkg.com",
   ];
@@ -67,32 +66,25 @@
       loadingText.textContent = "Đang tải ffmpeg.wasm…";
 
       let FFmpeg;
-      let lastErr;
-      for (const base of CDN_BASES) {
-        try {
-          const [ffmpegMod, utilMod] = await Promise.all([
-            import(`${base}/@ffmpeg/ffmpeg@${FFMPEG_VER}/dist/esm/index.js`),
-            import(`${base}/@ffmpeg/util@${UTIL_VER}/dist/esm/index.js`),
-          ]);
-          FFmpeg = ffmpegMod.FFmpeg;
-          toBlobURL = utilMod.toBlobURL;
-          fetchFile = utilMod.fetchFile;
-          if (!FFmpeg || !toBlobURL || !fetchFile) {
-            throw new Error("module exports thiếu (FFmpeg/toBlobURL/fetchFile)");
-          }
-          break;
-        } catch (err) {
-          console.warn("[converter] ESM load failed from", base, err);
-          lastErr = err;
-          FFmpeg = null;
+      try {
+        const [ffmpegMod, utilMod] = await Promise.all([
+          import("./vendor/ffmpeg/index.js"),
+          import("./vendor/util/index.js"),
+        ]);
+        FFmpeg = ffmpegMod.FFmpeg;
+        toBlobURL = utilMod.toBlobURL;
+        fetchFile = utilMod.fetchFile;
+        if (!FFmpeg || !toBlobURL || !fetchFile) {
+          throw new Error("vendor/ffmpeg hoặc vendor/util thiếu exports.");
         }
+      } catch (err) {
+        throw new Error("Không load được vendor module: " + (err.message || err));
       }
-      if (!FFmpeg) throw lastErr || new Error("Không load được module ffmpeg/util từ CDN.");
 
       loadingText.textContent = "Đang tải core (~30MB)…";
 
       let coreErr;
-      for (const base of CDN_BASES) {
+      for (const base of CORE_CDN_BASES) {
         const coreBase = `${base}/@ffmpeg/core@${CORE_VER}/dist/umd`;
         try {
           const ff = new FFmpeg();
