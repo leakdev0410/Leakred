@@ -27,10 +27,11 @@
   const FFMPEG_VER = "0.12.15";
   const UTIL_VER = "0.12.2";
   const CORE_VER = "0.12.10";
-  const CDN = "https://unpkg.com";
-  const FFMPEG_JS = `${CDN}/@ffmpeg/ffmpeg@${FFMPEG_VER}/dist/umd/ffmpeg.js`;
-  const UTIL_JS = `${CDN}/@ffmpeg/util@${UTIL_VER}/dist/umd/index.js`;
-  const CORE_BASE = `${CDN}/@ffmpeg/core@${CORE_VER}/dist/umd`;
+  // Thử jsdelivr trước (nhanh hơn ở VN/châu Á), fallback unpkg
+  const CDN_BASES = [
+    "https://cdn.jsdelivr.net/npm",
+    "https://unpkg.com",
+  ];
 
   const dropzone = document.getElementById("convDropzone");
   const fileInput = document.getElementById("convFileInput");
@@ -60,10 +61,25 @@
       if ([...document.scripts].some((s) => s.src === src)) return resolve();
       const s = document.createElement("script");
       s.src = src;
+      s.crossOrigin = "anonymous";
       s.onload = () => resolve();
-      s.onerror = () => reject(new Error("Không tải được " + src));
+      s.onerror = () => reject(new Error("Script load failed: " + src));
       document.head.appendChild(s);
     });
+  }
+
+  async function loadScriptWithFallback(path) {
+    let lastErr;
+    for (const base of CDN_BASES) {
+      try {
+        await loadScript(base + path);
+        return base;
+      } catch (err) {
+        console.warn("[converter] CDN failed:", base + path, err);
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error("All CDNs failed for " + path);
   }
 
   async function ensureFFmpeg() {
@@ -74,24 +90,36 @@
       showStatus(loadingEl);
       loadingText.textContent = "Đang tải ffmpeg.wasm…";
 
-      await loadScript(FFMPEG_JS);
-      await loadScript(UTIL_JS);
+      await loadScriptWithFallback(`/@ffmpeg/ffmpeg@${FFMPEG_VER}/dist/umd/ffmpeg.js`);
+      await loadScriptWithFallback(`/@ffmpeg/util@${UTIL_VER}/dist/umd/index.js`);
+
+      if (!window.FFmpegWASM || !window.FFmpegUtil) {
+        throw new Error("UMD global ffmpeg/util không xuất hiện sau khi load script.");
+      }
 
       const { FFmpeg } = window.FFmpegWASM;
       const { toBlobURL } = window.FFmpegUtil;
 
       loadingText.textContent = "Đang tải core (~30MB)…";
 
-      const ff = new FFmpeg();
-      ff.on("log", ({ message }) => console.log("[ffmpeg]", message));
-
-      await ff.load({
-        coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, "text/javascript"),
-        wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, "application/wasm"),
-      });
-
-      ffmpeg = ff;
-      return ff;
+      let lastErr;
+      for (const base of CDN_BASES) {
+        const coreBase = `${base}/@ffmpeg/core@${CORE_VER}/dist/umd`;
+        try {
+          const ff = new FFmpeg();
+          ff.on("log", ({ message }) => console.log("[ffmpeg]", message));
+          await ff.load({
+            coreURL: await toBlobURL(`${coreBase}/ffmpeg-core.js`, "text/javascript"),
+            wasmURL: await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, "application/wasm"),
+          });
+          ffmpeg = ff;
+          return ff;
+        } catch (err) {
+          console.warn("[converter] core load failed from", coreBase, err);
+          lastErr = err;
+        }
+      }
+      throw lastErr || new Error("Không tải được ffmpeg-core từ mọi CDN.");
     })();
 
     try {
@@ -188,7 +216,7 @@
       ff = await ensureFFmpeg();
     } catch (err) {
       console.error(err);
-      showError("Không tải được ffmpeg.wasm. Kiểm tra mạng và thử lại.");
+      showError("Không tải được ffmpeg.wasm: " + (err.message || err));
       return;
     }
 
