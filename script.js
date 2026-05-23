@@ -17,12 +17,6 @@
   ];
   const FETCH_TIMEOUT_MS = 18000;
 
-  // Khi chạy trong Tauri (Android/desktop): bypass CORS bằng cách gọi Rust trực tiếp.
-  const IS_TAURI = typeof window !== "undefined" && !!(window.__TAURI_INTERNALS__ || window.__TAURI__);
-  const tauriInvoke = IS_TAURI
-    ? (window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke)
-    : null;
-
   const PLATFORM_PATTERNS = {
     tiktok: /(?:^|\.)tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com/i,
     instagram: /(?:^|\.)instagram\.com|ddinstagram\.com/i,
@@ -106,7 +100,6 @@
 
   // ---------- TikTok ----------
   async function fetchTikTok(url) {
-    if (IS_TAURI) return await tauriInvoke("fetch_tiktok", { url });
     const api = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
     const json = await fetchJson(api);
     if (!json || json.code !== 0 || !json.data) {
@@ -328,7 +321,6 @@
 
   // ---------- Instagram ----------
   async function fetchInstagram(url) {
-    if (IS_TAURI) return await tauriInvoke("fetch_instagram", { url });
     try {
       const html = await callSnapsave(url);
       const data = parseSnapsaveHtml(html, "instagram");
@@ -365,7 +357,6 @@
 
   // ---------- Facebook ----------
   async function fetchFacebook(url) {
-    if (IS_TAURI) return await tauriInvoke("fetch_facebook", { url });
     try {
       const html = await callSnapsave(url);
       const data = parseSnapsaveHtml(html, "facebook");
@@ -416,15 +407,6 @@
 
   // ---------- Download helper ----------
   async function triggerDownload(mediaUrl, filename) {
-    if (IS_TAURI) {
-      try {
-        const path = await tauriInvoke("download_media", { url: mediaUrl, filename });
-        showToast("Đã lưu: " + path, "success", 4000);
-      } catch (e) {
-        showToast("Lỗi tải: " + (e?.message || e), "error", 5000);
-      }
-      return;
-    }
     try {
       const res = await fetchWithTimeout(mediaUrl);
       if (!res.ok) throw new Error("HTTP " + res.status);
