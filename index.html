@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Leakred Downloader — Tải video & ảnh từ TikTok, Instagram, Facebook</title>
-  <meta name="description" content="Tải video và ảnh từ TikTok, Instagram, Facebook không kèm logo. Dán link và tải về ngay." />
+  <title>Leakred — Tải video & ảnh, Convert 4:3 → 16:9</title>
+  <meta name="description" content="Tải video và ảnh từ TikTok, Instagram, Facebook không kèm logo. Convert video 4:3 thành 16:9 (cho CS2) ngay trong trình duyệt." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -17,59 +17,125 @@
         <span class="logo-mark">L</span>
         <span class="logo-text">Leakred</span>
       </div>
-      <h1 class="title">Tải video &amp; ảnh <em>không logo</em></h1>
-      <p class="tagline">Dán link TikTok / Instagram / Facebook — tải video & ảnh ngay trong vài giây.</p>
+      <h1 class="title">Tải video, ảnh &amp; <em>convert</em></h1>
+      <p class="tagline">Tải nội dung từ TikTok / Instagram / Facebook và stretch video 4:3 → 16:9 ngay trong trình duyệt.</p>
     </header>
 
-    <section class="card glass input-card">
-      <div class="platforms">
-        <div class="platform-badge" data-platform="tiktok" title="TikTok">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16.5 3a5.5 5.5 0 0 0 4.5 4.5v3a8.5 8.5 0 0 1-4.5-1.3v6.3a6 6 0 1 1-6-6c.34 0 .67.03 1 .09v3.18a3 3 0 1 0 2 2.83V3h3z"/></svg>
-          <span>TikTok</span>
+    <nav class="tab-nav" role="tablist">
+      <button class="tab active" type="button" role="tab" data-tab="download" aria-selected="true">Tải về</button>
+      <button class="tab" type="button" role="tab" data-tab="convert" aria-selected="false">Convert 4:3 → 16:9</button>
+    </nav>
+
+    <div id="tab-download" class="tab-content" role="tabpanel">
+      <section class="card glass input-card">
+        <div class="platforms">
+          <div class="platform-badge" data-platform="tiktok" title="TikTok">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16.5 3a5.5 5.5 0 0 0 4.5 4.5v3a8.5 8.5 0 0 1-4.5-1.3v6.3a6 6 0 1 1-6-6c.34 0 .67.03 1 .09v3.18a3 3 0 1 0 2 2.83V3h3z"/></svg>
+            <span>TikTok</span>
+          </div>
+          <div class="platform-badge" data-platform="instagram" title="Instagram">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23a3.7 3.7 0 0 1-.9 1.38c-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.7 3.7 0 0 1-1.38-.9 3.7 3.7 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16zM12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63a5.9 5.9 0 0 0-2.13 1.39A5.9 5.9 0 0 0 .62 4.15c-.3.76-.5 1.64-.56 2.9C0 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.14.56 2.9.31.81.73 1.5 1.39 2.13.63.66 1.32 1.08 2.13 1.39.76.3 1.64.5 2.9.56C8.33 24 8.74 24 12 24s3.67 0 4.95-.07c1.27-.06 2.14-.26 2.9-.56a5.9 5.9 0 0 0 2.13-1.39 5.9 5.9 0 0 0 1.39-2.13c.3-.76.5-1.64.56-2.9.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.14-.56-2.9a5.9 5.9 0 0 0-1.39-2.13A5.9 5.9 0 0 0 19.85.63c-.76-.3-1.64-.5-2.9-.56C15.67 0 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zm0 10.16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-10.92a1.44 1.44 0 1 0 0-2.88 1.44 1.44 0 0 0 0 2.88z"/></svg>
+            <span>Instagram</span>
+          </div>
+          <div class="platform-badge" data-platform="facebook" title="Facebook">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>
+            <span>Facebook</span>
+          </div>
         </div>
-        <div class="platform-badge" data-platform="instagram" title="Instagram">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23a3.7 3.7 0 0 1-.9 1.38c-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.7 3.7 0 0 1-1.38-.9 3.7 3.7 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16zM12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63a5.9 5.9 0 0 0-2.13 1.39A5.9 5.9 0 0 0 .62 4.15c-.3.76-.5 1.64-.56 2.9C0 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.14.56 2.9.31.81.73 1.5 1.39 2.13.63.66 1.32 1.08 2.13 1.39.76.3 1.64.5 2.9.56C8.33 24 8.74 24 12 24s3.67 0 4.95-.07c1.27-.06 2.14-.26 2.9-.56a5.9 5.9 0 0 0 2.13-1.39 5.9 5.9 0 0 0 1.39-2.13c.3-.76.5-1.64.56-2.9.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.14-.56-2.9a5.9 5.9 0 0 0-1.39-2.13A5.9 5.9 0 0 0 19.85.63c-.76-.3-1.64-.5-2.9-.56C15.67 0 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zm0 10.16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-10.92a1.44 1.44 0 1 0 0-2.88 1.44 1.44 0 0 0 0 2.88z"/></svg>
-          <span>Instagram</span>
+
+        <form id="downloadForm" class="input-row" autocomplete="off">
+          <input
+            id="urlInput"
+            type="url"
+            placeholder="Dán link TikTok / Instagram / Facebook..."
+            aria-label="Đường dẫn cần tải"
+            required
+          />
+          <button type="button" id="pasteBtn" class="btn btn-ghost" title="Dán từ clipboard">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M19 2h-4.18A3 3 0 0 0 12 0a3 3 0 0 0-2.82 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 18H5V4h2v3h10V4h2v16z"/></svg>
+            Dán
+          </button>
+          <button type="submit" id="downloadBtn" class="btn btn-primary">
+            <span class="btn-label">Tải về</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+        </form>
+
+        <p class="hint" id="hint">Hỗ trợ: TikTok (video / ảnh, không watermark) · Instagram (Reel, Post, Carousel) · Facebook (video, Reel)</p>
+      </section>
+
+      <section id="result" class="card glass result-card hidden" aria-live="polite"></section>
+
+      <section class="card glass info-card">
+        <h2>Cách dùng</h2>
+        <ol>
+          <li>Mở app TikTok / Instagram / Facebook, chọn video hoặc bài đăng cần tải.</li>
+          <li>Bấm "Chia sẻ" → "Sao chép liên kết".</li>
+          <li>Quay lại trang này, dán link vào ô trên và bấm <strong>Tải về</strong>.</li>
+          <li>Bấm nút <strong>Tải file</strong> để lưu video / ảnh về máy.</li>
+        </ol>
+        <p class="muted" style="margin-top:10px;font-size:12.5px;color:var(--text-dim)">Lưu ý: bài đăng riêng tư hoặc tài khoản private sẽ không tải được.</p>
+      </section>
+    </div>
+
+    <div id="tab-convert" class="tab-content hidden" role="tabpanel">
+      <section class="card glass input-card">
+        <h2 class="conv-title">Stretch video 4:3 → 16:9</h2>
+        <p class="conv-sub">Cho clip CS2 (1440×1080, 1280×960…) — kéo dãn ngang thành 1920×1080. Xử lý 100% trên máy bạn.</p>
+
+        <div id="convDropzone" class="conv-dropzone">
+          <div class="conv-dz-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="32" height="32"><path fill="currentColor" d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <p class="conv-text">Kéo video vào đây hoặc <span class="link">chọn file</span></p>
+          <p class="conv-hint">mp4, mkv, mov, avi… &middot; tối đa ~2GB</p>
+          <input type="file" id="convFileInput" accept="video/*" hidden />
         </div>
-        <div class="platform-badge" data-platform="facebook" title="Facebook">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>
-          <span>Facebook</span>
+
+        <div id="convLoading" class="conv-status hidden">
+          <div class="conv-loading">
+            <span class="conv-spinner" aria-hidden="true"></span>
+            <span id="convLoadingText">Đang tải ffmpeg.wasm (~30MB, lần đầu)…</span>
+          </div>
         </div>
-      </div>
 
-      <form id="downloadForm" class="input-row" autocomplete="off">
-        <input
-          id="urlInput"
-          type="url"
-          placeholder="Dán link TikTok / Instagram / Facebook..."
-          aria-label="Đường dẫn cần tải"
-          required
-        />
-        <button type="button" id="pasteBtn" class="btn btn-ghost" title="Dán từ clipboard">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M19 2h-4.18A3 3 0 0 0 12 0a3 3 0 0 0-2.82 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 18H5V4h2v3h10V4h2v16z"/></svg>
-          Dán
-        </button>
-        <button type="submit" id="downloadBtn" class="btn btn-primary">
-          <span class="btn-label">Tải về</span>
-          <span class="btn-spinner" aria-hidden="true"></span>
-        </button>
-      </form>
+        <div id="convProgress" class="conv-status hidden">
+          <div class="conv-filename" id="convFilename"></div>
+          <div class="conv-bar"><div class="conv-fill" id="convFill"></div></div>
+          <div class="conv-stats">
+            <span id="convPercent">0%</span>
+            <span id="convPhase">Đang chuẩn bị…</span>
+          </div>
+        </div>
 
-      <p class="hint" id="hint">Hỗ trợ: TikTok (video / ảnh, không watermark) · Instagram (Reel, Post, Carousel) · Facebook (video, Reel)</p>
-    </section>
+        <div id="convDone" class="conv-status hidden">
+          <p class="conv-success">✓ Convert xong</p>
+          <p class="conv-doneFile" id="convDoneFile"></p>
+          <div class="conv-actions">
+            <a id="convDownload" class="btn btn-primary" href="#" download>
+              <span class="btn-label">Tải video 16:9</span>
+            </a>
+            <button id="convReset" type="button" class="btn btn-ghost">Convert tiếp</button>
+          </div>
+        </div>
 
-    <section id="result" class="card glass result-card hidden" aria-live="polite"></section>
+        <div id="convError" class="conv-status hidden">
+          <p class="conv-err" id="convErrorMsg"></p>
+          <button id="convRetry" type="button" class="btn btn-ghost">Thử lại</button>
+        </div>
+      </section>
 
-    <section class="card glass info-card">
-      <h2>Cách dùng</h2>
-      <ol>
-        <li>Mở app TikTok / Instagram / Facebook, chọn video hoặc bài đăng cần tải.</li>
-        <li>Bấm "Chia sẻ" → "Sao chép liên kết".</li>
-        <li>Quay lại trang này, dán link vào ô trên và bấm <strong>Tải về</strong>.</li>
-        <li>Bấm nút <strong>Tải file</strong> để lưu video / ảnh về máy.</li>
-      </ol>
-      <p class="muted" style="margin-top:10px;font-size:12.5px;color:var(--text-dim)">Lưu ý: bài đăng riêng tư hoặc tài khoản private sẽ không tải được.</p>
-    </section>
+      <section class="card glass info-card">
+        <h2>Cách dùng</h2>
+        <ol>
+          <li>Quay clip CS2 ở chế độ 4:3 stretched như thường (thường record ra 1440×1080).</li>
+          <li>Mở tab này, kéo file video vào ô trên.</li>
+          <li>Lần đầu sẽ tải ~30MB ffmpeg.wasm, các lần sau dùng cache nên rất nhanh.</li>
+          <li>Đợi convert (chậm hơn ffmpeg native vì chạy WebAssembly), rồi bấm <strong>Tải video 16:9</strong>.</li>
+        </ol>
+        <p class="muted" style="margin-top:10px;font-size:12.5px;color:var(--text-dim)">Output: 1920×1080 H.264 + AAC. File chỉ tồn tại trong RAM trình duyệt — không upload đi đâu.</p>
+      </section>
+    </div>
 
     <footer class="footer">
       <p>Chỉ dùng cho mục đích cá nhân. Vui lòng tôn trọng bản quyền và quyền riêng tư của tác giả gốc.</p>
@@ -80,5 +146,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="script.js" defer></script>
+  <script src="converter.js" defer></script>
 </body>
 </html>
