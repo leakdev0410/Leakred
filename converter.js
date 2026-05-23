@@ -85,7 +85,10 @@
 
       let coreErr;
       for (const base of CORE_CDN_BASES) {
-        const coreBase = `${base}/@ffmpeg/core@${CORE_VER}/dist/umd`;
+        // ESM core vì FFmpeg worker là type:"module" — không có importScripts,
+        // phải fallback await import(_coreURL).default. UMD build không có
+        // export default nên fail; ESM build kết thúc bằng `export default createFFmpegCore`.
+        const coreBase = `${base}/@ffmpeg/core@${CORE_VER}/dist/esm`;
         try {
           const ff = new FFmpeg();
           ff.on("log", ({ message }) => console.log("[ffmpeg]", message));
