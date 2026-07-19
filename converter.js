@@ -24,13 +24,13 @@
   });
 
   // ---------- Converter (ffmpeg.wasm, single-thread) ----------
-  const FFMPEG_VER = "0.12.15";
-  const UTIL_VER = "0.12.2";
+  // @ffmpeg/ffmpeg + util self-host trong ./vendor (same-origin để Worker chạy được).
+  // Chỉ ffmpeg-core (~30MB wasm) load từ CDN qua toBlobURL.
   const CORE_VER = "0.12.10";
-  const CDN = "https://unpkg.com";
-  const FFMPEG_JS = `${CDN}/@ffmpeg/ffmpeg@${FFMPEG_VER}/dist/umd/ffmpeg.js`;
-  const UTIL_JS = `${CDN}/@ffmpeg/util@${UTIL_VER}/dist/umd/index.js`;
-  const CORE_BASE = `${CDN}/@ffmpeg/core@${CORE_VER}/dist/umd`;
+  const CORE_CDN_BASES = [
+    "https://cdn.jsdelivr.net/npm",
+    "https://unpkg.com",
+  ];
 
   const dropzone = document.getElementById("convDropzone");
   const fileInput = document.getElementById("convFileInput");
@@ -54,17 +54,8 @@
   let ffmpeg = null;
   let ffmpegLoading = null;
   let currentBlobUrl = null;
-
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      if ([...document.scripts].some((s) => s.src === src)) return resolve();
-      const s = document.createElement("script");
-      s.src = src;
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error("Không tải được " + src));
-      document.head.appendChild(s);
-    });
-  }
+  let toBlobURL = null;
+  let fetchFile = null;
 
   async function ensureFFmpeg() {
     if (ffmpeg) return ffmpeg;
@@ -74,24 +65,45 @@
       showStatus(loadingEl);
       loadingText.textContent = "Đang tải ffmpeg.wasm…";
 
-      await loadScript(FFMPEG_JS);
-      await loadScript(UTIL_JS);
-
-      const { FFmpeg } = window.FFmpegWASM;
-      const { toBlobURL } = window.FFmpegUtil;
+      let FFmpeg;
+      try {
+        const [ffmpegMod, utilMod] = await Promise.all([
+          import("./vendor/ffmpeg/index.js"),
+          import("./vendor/util/index.js"),
+        ]);
+        FFmpeg = ffmpegMod.FFmpeg;
+        toBlobURL = utilMod.toBlobURL;
+        fetchFile = utilMod.fetchFile;
+        if (!FFmpeg || !toBlobURL || !fetchFile) {
+          throw new Error("vendor/ffmpeg hoặc vendor/util thiếu exports.");
+        }
+      } catch (err) {
+        throw new Error("Không load được vendor module: " + (err.message || err));
+      }
 
       loadingText.textContent = "Đang tải core (~30MB)…";
 
-      const ff = new FFmpeg();
-      ff.on("log", ({ message }) => console.log("[ffmpeg]", message));
-
-      await ff.load({
-        coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, "text/javascript"),
-        wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, "application/wasm"),
-      });
-
-      ffmpeg = ff;
-      return ff;
+      let coreErr;
+      for (const base of CORE_CDN_BASES) {
+        // ESM core vì FFmpeg worker là type:"module" — không có importScripts,
+        // phải fallback await import(_coreURL).default. UMD build không có
+        // export default nên fail; ESM build kết thúc bằng `export default createFFmpegCore`.
+        const coreBase = `${base}/@ffmpeg/core@${CORE_VER}/dist/esm`;
+        try {
+          const ff = new FFmpeg();
+          ff.on("log", ({ message }) => console.log("[ffmpeg]", message));
+          await ff.load({
+            coreURL: await toBlobURL(`${coreBase}/ffmpeg-core.js`, "text/javascript"),
+            wasmURL: await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, "application/wasm"),
+          });
+          ffmpeg = ff;
+          return ff;
+        } catch (err) {
+          console.warn("[converter] core load failed from", coreBase, err);
+          coreErr = err;
+        }
+      }
+      throw coreErr || new Error("Không tải được ffmpeg-core từ mọi CDN.");
     })();
 
     try {
@@ -188,7 +200,7 @@
       ff = await ensureFFmpeg();
     } catch (err) {
       console.error(err);
-      showError("Không tải được ffmpeg.wasm. Kiểm tra mạng và thử lại.");
+      showError("Không tải được ffmpeg.wasm: " + (err.message || err));
       return;
     }
 
@@ -196,7 +208,6 @@
     setProgress(0, "Đang ghi file vào bộ nhớ…");
 
     try {
-      const { fetchFile } = window.FFmpegUtil;
       ff.on("progress", onProgress);
 
       await ff.writeFile(inputName, await fetchFile(file));
