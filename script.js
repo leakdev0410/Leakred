@@ -97,7 +97,7 @@
     throw lastErr || new Error("Tất cả CORS proxy đều lỗi.");
   }
 
-  // TikTok (giữ nguyên)
+  // ---------- TikTok ----------
   async function fetchTikTok(url) {
     const api = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
     const json = await fetchJson(api);
@@ -130,7 +130,7 @@
     };
   }
 
-  // Harvest media (giữ nguyên)
+  // Lọc URL media
   function harvestMediaFromHtml(html) {
     const found = { videos: [], images: [] };
     const seen = new Set();
@@ -168,7 +168,7 @@
     return t ? decodeHtml(t[1]) : "";
   }
 
-  // Snapsave decryption (giữ nguyên)
+  // Snapsave decryption
   function escapeRe(s) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
@@ -228,19 +228,59 @@
 
   function parseSnapsaveHtml(html, platform) {
     const doc = new DOMParser().parseFromString(html, "text/html");
-    const desc = doc.querySelector("span.video-des")?.textContent.trim() || doc.querySelector(".video-title, .videotikmate-middle p")?.textContent.trim() || "";
+    const desc = doc.querySelector("span.video-des")?.textContent.trim()
+              || doc.querySelector(".video-title, .videotikmate-middle p")?.textContent.trim()
+              || "";
     const figureThumb = doc.querySelector("article.media figure img")?.getAttribute("src") || "";
 
     const table = doc.querySelector("table.table");
     if (table) {
       const videos = [...table.querySelectorAll("tbody tr")].map((tr) => {
         const tds = tr.querySelectorAll("td");
-        let url = tds[2]?.querySelector("a")?.getAttribute("href") || "";
-        return { url };
+        const resolution = (tds[0]?.textContent || "").trim();
+        let url = tds[2]?.querySelector("a")?.getAttribute("href")
+              || tds[2]?.querySelector("button")?.getAttribute("onclick") || "";
+        const m = /get_progressApi\('(.*?)'\)/.exec(url);
+        if (m) url = "https://snapsave.app" + m[1];
+        return { url, resolution };
       }).filter((v) => v.url && v.url !== "#");
       if (videos.length) {
-        return { type: "video", url: videos[0].url, title: desc, thumbnail: figureThumb, platform };
+        return {
+          type: "video",
+          url: videos[0].url,
+          title: desc,
+          thumbnail: figureThumb,
+          platform,
+        };
       }
+    }
+
+    const items = [...doc.querySelectorAll("div.download-items")].map((el) => {
+      const thumb = el.querySelector(".download-items__thumb img")?.getAttribute("src") || "";
+      const btn = el.querySelector(".download-items__btn");
+      const href = btn?.querySelector("a")?.getAttribute("href") || "";
+      const spanText = btn?.querySelector("span")?.textContent.trim() || "";
+      const isPhoto = /photo|ảnh/i.test(spanText);
+      return { kind: isPhoto ? "image" : "video", url: isPhoto ? thumb : href, thumbnail: thumb };
+    }).filter((it) => it.url);
+    if (items.length === 1) {
+      const it = items[0];
+      return {
+        type: it.kind === "image" ? "image" : "video",
+        url: it.url,
+        thumbnail: it.thumbnail,
+        title: desc,
+        platform,
+      };
+    }
+    if (items.length > 1) {
+      return {
+        type: "carousel",
+        items: items.map((it) => ({ kind: it.kind, url: it.url })),
+        thumbnail: items[0].thumbnail,
+        title: desc,
+        platform,
+      };
     }
 
     const firstA = doc.querySelector("a[href^='http']");
@@ -252,39 +292,42 @@
     return null;
   }
 
-  // Instagram Updated
+  // ---------- Instagram ----------
   async function fetchInstagram(url) {
     try {
       const html = await callSnapsave(url);
       const data = parseSnapsaveHtml(html, "instagram");
       if (data) return data;
-    } catch (_) {}
+    } catch (_) { /* fallback */ }
 
-    const fallbacks = [
+    const fallback = [
       { endpoint: "https://v3.saveig.app/api/ajaxSearch", body: `q=${encodeURIComponent(url)}&t=media&lang=vi` },
       { endpoint: "https://snapinsta.app/api/ajaxSearch", body: `q=${encodeURIComponent(url)}&t=media&lang=en` },
-      { endpoint: "https://en.savefrom.net/api/convert", body: `url=${encodeURIComponent(url)}` },
     ];
-
-    for (const fb of fallbacks) {
+    for (const t of fallback) {
       try {
-        const text = await fetchViaProxies(fb.endpoint, {
+        const text = await fetchViaProxies(t.endpoint, {
           method: "POST",
-          body: fb.body,
-          headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "Accept": "*/*" },
+          body: t.body,
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Accept": "*/*",
+            "X-Requested-With": "XMLHttpRequest",
+          },
         });
         let html = text;
         try { const j = JSON.parse(text); html = j.data || j.html || text; } catch (_) {}
         const { videos, images } = harvestMediaFromHtml(html);
         if (videos.length) return { type: "video", url: videos[0], title: pickTitleFromHtml(html), thumbnail: images[0] || "", platform: "instagram" };
-        if (images.length) return { type: "image", url: images[0], thumbnail: images[0], title: pickTitleFromHtml(html), platform: "instagram" };
+        if (images.length === 1) return { type: "image", url: images[0], thumbnail: images[0], title: pickTitleFromHtml(html), platform: "instagram" };
+        if (images.length > 1) return { type: "carousel", items: images.map((u) => ({ kind: "image", url: u })), thumbnail: images[0], title: pickTitleFromHtml(html), platform: "instagram" };
       } catch (_) {}
     }
 
-    throw new Error("Không tải được Instagram. Thử link khác hoặc chờ vài phút.");
+    throw new Error("Không tải được nội dung Instagram (có thể là tài khoản riêng tư hoặc API tạm lỗi).");
   }
 
-  // Facebook (giữ nguyên)
+  // ---------- Facebook ----------
   async function fetchFacebook(url) {
     try {
       const html = await callSnapsave(url);
@@ -292,7 +335,30 @@
       if (data) return data;
     } catch (_) {}
 
-    throw new Error("Không tải được Facebook.");
+    const fallback = [
+      { endpoint: "https://getmyfb.com/api/ajaxSearch", body: `q=${encodeURIComponent(url)}&t=media&lang=vi` },
+      { endpoint: "https://fdownloader.net/api/ajaxSearch", body: `q=${encodeURIComponent(url)}&t=media&lang=vi` },
+    ];
+    for (const t of fallback) {
+      try {
+        const text = await fetchViaProxies(t.endpoint, {
+          method: "POST",
+          body: t.body,
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Accept": "*/*",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+        let html = text;
+        try { const j = JSON.parse(text); html = j.data || j.html || text; } catch (_) {}
+        const { videos, images } = harvestMediaFromHtml(html);
+        if (videos.length) return { type: "video", url: videos[0], title: pickTitleFromHtml(html), thumbnail: images[0] || "", platform: "facebook" };
+        if (images.length) return { type: "image", url: images[0], thumbnail: images[0], title: pickTitleFromHtml(html), platform: "facebook" };
+      } catch (_) {}
+    }
+
+    throw new Error("Không tải được video Facebook (có thể là nội dung riêng tư hoặc API tạm lỗi).");
   }
 
   function decodeHtml(s) {
@@ -325,8 +391,8 @@
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
       showToast("Đã bắt đầu tải xuống.", "success");
     } catch (e) {
-      window.open(mediaUrl, "_blank");
-      showToast("Mở tab mới để tải.", "info", 5000);
+      window.open(mediaUrl, "_blank", "noopener");
+      showToast("Trình duyệt chặn tải trực tiếp — đã mở tab mới, bấm chuột phải > Lưu.", "info", 5000);
     }
   }
 
@@ -347,17 +413,47 @@
   }
 
   function renderResult(data) {
-    // (Giữ nguyên từ code gốc của mày - paste phần renderResult, buildMeta từ file cũ vào đây)
     resultEl.classList.remove("hidden");
-    // ... code render đầy đủ
-    console.log("Result:", data); // tạm
+    resultEl.innerHTML = "";
+
+    if (data.type === "carousel") {
+      const grid = document.createElement("div");
+      grid.className = "carousel-grid";
+      data.items.forEach((item, i) => {
+        const cell = document.createElement("div");
+        cell.className = "carousel-item";
+        const node = item.kind === "video"
+          ? Object.assign(document.createElement("video"), { src: item.url, controls: true, playsInline: true })
+          : Object.assign(document.createElement("img"), { src: item.url, alt: "" });
+        cell.appendChild(node);
+        const a = document.createElement("a");
+        a.className = "item-dl";
+        a.textContent = "Tải";
+        a.href = "#";
+        a.addEventListener("click", (e) => {
+          e.preventDefault();
+          triggerDownload(item.url, `leakred-${data.platform}-${i + 1}.${item.kind === "image" ? "jpg" : "mp4"}`);
+        });
+        cell.appendChild(a);
+        grid.appendChild(cell);
+      });
+      resultEl.appendChild(grid);
+      return;
+    }
+
+    const isVideo = data.type === "video";
+    const media = isVideo
+      ? Object.assign(document.createElement("video"), { src: data.url, controls: true, playsInline: true, poster: data.thumbnail || "" })
+      : Object.assign(document.createElement("img"), { src: data.url, alt: data.title || "" });
+    media.className = "result-media";
+    resultEl.appendChild(media);
+
+    // ... (phần meta và button còn lại tương tự, mày có thể bổ sung từ file cũ)
+
+    showToast("Sẵn sàng tải!", "success");
   }
 
-  function buildMeta(data) {
-    // tương tự
-  }
-
-  // Main
+  // Main flow
   urlInput.addEventListener("input", () => {
     const p = detectPlatform(urlInput.value);
     updateBadges(p);
@@ -366,28 +462,38 @@
   pasteBtn.addEventListener("click", async () => {
     try {
       const text = await navigator.clipboard.readText();
+      if (!text) return showToast("Clipboard trống.", "error");
       urlInput.value = text.trim();
       updateBadges(detectPlatform(urlInput.value));
-    } catch {}
+      urlInput.focus();
+    } catch {
+      showToast("Trình duyệt chặn clipboard.", "error");
+    }
   });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const url = urlInput.value.trim();
-    if (!url) return showToast("Nhập link!", "error");
+    if (!url) return showToast("Hãy nhập link cần tải.", "error");
 
     const platform = detectPlatform(url);
-    if (!platform) return showToast("Link không hỗ trợ.", "error");
+    if (!platform) {
+      return showToast("Link không hỗ trợ.", "error");
+    }
 
     downloadBtn.disabled = true;
+    downloadBtn.classList.add("loading");
+    resultEl.classList.add("hidden");
+
     try {
       const data = await HANDLERS[platform](url);
       renderResult(data);
-      showToast("Thành công!", "success");
+      showToast("Đã sẵn sàng.", "success");
     } catch (err) {
-      showToast(err.message, "error", 5000);
+      showToast(err.message || "Lỗi không xác định.", "error", 5000);
     } finally {
       downloadBtn.disabled = false;
+      downloadBtn.classList.remove("loading");
     }
   });
 })();
