@@ -576,9 +576,52 @@ html, body {
 }
 .conv-actions .btn { flex: 1 1 auto; }
 
+/* Upscale ảnh */
+.upc-scale-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.upc-scale-row label {
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+.upc-scale-row select {
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.upc-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.upc-compare-label {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.upc-compare img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
 @media (max-width: 560px) {
   .tab { padding: 9px 10px; font-size: 13.5px; }
   .conv-dropzone { padding: 28px 16px; }
+  .upc-compare { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

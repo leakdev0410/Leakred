@@ -24,6 +24,7 @@
     <nav class="tab-nav" role="tablist">
       <button class="tab active" type="button" role="tab" data-tab="download" aria-selected="true">Tải về</button>
       <button class="tab" type="button" role="tab" data-tab="convert" aria-selected="false">Convert 4:3 → 16:9</button>
+      <button class="tab" type="button" role="tab" data-tab="upscale" aria-selected="false">Upscale ảnh</button>
     </nav>
 
     <div id="tab-download" class="tab-content" role="tabpanel">
@@ -137,6 +138,83 @@
       </section>
     </div>
 
+    <div id="tab-upscale" class="tab-content hidden" role="tabpanel">
+      <section class="card glass input-card">
+        <h2 class="conv-title">Upscale ảnh bằng AI</h2>
+        <p class="conv-sub">Phóng to & làm nét ảnh bằng model ESRGAN thật, chạy bằng TensorFlow.js ngay trên trình duyệt. Xử lý 100% trên máy bạn.</p>
+
+        <div class="upc-scale-row">
+          <label for="upcScale">Mức phóng to</label>
+          <select id="upcScale">
+            <option value="2">2x</option>
+            <option value="4" selected>4x</option>
+          </select>
+        </div>
+
+        <div id="upcDropzone" class="conv-dropzone">
+          <div class="conv-dz-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="32" height="32"><path fill="currentColor" d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <p class="conv-text">Kéo ảnh vào đây hoặc <span class="link">chọn file</span></p>
+          <p class="conv-hint">jpg, png, webp… &middot; ảnh càng lớn xử lý càng lâu</p>
+          <input type="file" id="upcFileInput" accept="image/*" hidden />
+        </div>
+
+        <div id="upcLoading" class="conv-status hidden">
+          <div class="conv-loading">
+            <span class="conv-spinner" aria-hidden="true"></span>
+            <span id="upcLoadingText">Đang tải model AI (lần đầu)…</span>
+          </div>
+        </div>
+
+        <div id="upcProgress" class="conv-status hidden">
+          <div class="conv-filename" id="upcFilename"></div>
+          <div class="conv-bar"><div class="conv-fill" id="upcFill"></div></div>
+          <div class="conv-stats">
+            <span id="upcPercent">0%</span>
+            <span id="upcPhase">Đang xử lý…</span>
+          </div>
+        </div>
+
+        <div id="upcDone" class="conv-status hidden">
+          <p class="conv-success">✓ Upscale xong</p>
+          <p class="conv-doneFile" id="upcDoneFile"></p>
+          <div class="upc-compare">
+            <div>
+              <p class="upc-compare-label">Ảnh gốc</p>
+              <img id="upcOriginalImg" alt="Ảnh gốc" />
+            </div>
+            <div>
+              <p class="upc-compare-label">Đã upscale</p>
+              <img id="upcResultImg" alt="Ảnh đã upscale" />
+            </div>
+          </div>
+          <div class="conv-actions">
+            <a id="upcDownload" class="btn btn-primary" href="#" download>
+              <span class="btn-label">Tải ảnh đã upscale</span>
+            </a>
+            <button id="upcReset" type="button" class="btn btn-ghost">Upscale ảnh khác</button>
+          </div>
+        </div>
+
+        <div id="upcError" class="conv-status hidden">
+          <p class="conv-err" id="upcErrorMsg"></p>
+          <button id="upcRetry" type="button" class="btn btn-ghost">Thử lại</button>
+        </div>
+      </section>
+
+      <section class="card glass info-card">
+        <h2>Cách dùng</h2>
+        <ol>
+          <li>Chọn mức phóng to (2x hoặc 4x).</li>
+          <li>Kéo ảnh vào ô trên hoặc bấm để chọn file.</li>
+          <li>Lần đầu sẽ tải model AI (vài MB), các lần sau dùng cache nên nhanh hơn.</li>
+          <li>Đợi xử lý xong rồi bấm <strong>Tải ảnh đã upscale</strong>.</li>
+        </ol>
+        <p class="muted" style="margin-top:10px;font-size:12.5px;color:var(--text-dim)">Model: ESRGAN-slim, chạy qua TensorFlow.js. Ảnh chỉ tồn tại trong RAM trình duyệt — không upload đi đâu. Ảnh rất lớn có thể xử lý chậm hoặc chậm trên máy yếu.</p>
+      </section>
+    </div>
+
     <footer class="footer">
       <p>Chỉ dùng cho mục đích cá nhân. Vui lòng tôn trọng bản quyền và quyền riêng tư của tác giả gốc.</p>
       <p class="muted">Không lưu trữ link hay file phía máy chủ — mọi xử lý đều chạy trên trình duyệt của bạn.</p>
@@ -147,5 +225,8 @@
 
   <script src="script.js" defer></script>
   <script src="converter.js" defer></script>
+  <script src="vendor/upscaler/tf.min.js" defer></script>
+  <script src="vendor/upscaler/upscaler.min.js" defer></script>
+  <script src="upscale.js" defer></script>
 </body>
 </html>
