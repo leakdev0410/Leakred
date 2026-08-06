@@ -6,6 +6,7 @@
   const panels = {
     download: document.getElementById("tab-download"),
     convert: document.getElementById("tab-convert"),
+    upscale: document.getElementById("tab-upscale"),
   };
 
   tabs.forEach((tab) => {
