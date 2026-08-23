@@ -140,34 +140,88 @@
 
     <div id="tab-upscale" class="tab-content hidden" role="tabpanel">
       <section class="card glass input-card">
-        <h2 class="conv-title">Upscale ảnh bằng AI</h2>
-        <p class="conv-sub">Phóng to & làm nét ảnh bằng model ESRGAN thật, chạy bằng TensorFlow.js ngay trên trình duyệt. Xử lý 100% trên máy bạn.</p>
+        <h2 class="conv-title">Upscale & AI Enhance</h2>
+        <p class="conv-sub" id="upcIntro">Upscale riêng tư bằng model local chạy ngay trong trình duyệt. Ảnh không rời khỏi thiết bị.</p>
 
-        <div class="upc-scale-row">
-          <label for="upcScale">Mức phóng to</label>
-          <select id="upcScale">
-            <option value="2">2x</option>
-            <option value="4" selected>4x</option>
-          </select>
+        <fieldset class="upc-engine" aria-describedby="upcEngineNote">
+          <legend>Phương thức xử lý</legend>
+          <div class="upc-engine-options">
+            <label class="upc-engine-card">
+              <input type="radio" name="upcEngine" value="local" checked />
+              <span>
+                <strong>Local</strong>
+                <small>Riêng tư · miễn phí</small>
+              </span>
+            </label>
+            <label class="upc-engine-card">
+              <input type="radio" name="upcEngine" value="openrouter" />
+              <span>
+                <strong>OpenRouter</strong>
+                <small>AI Enhance · chất lượng cao</small>
+              </span>
+            </label>
+          </div>
+          <p class="upc-engine-note" id="upcEngineNote">Local dùng ESRGAN-slim và không tải ảnh lên mạng.</p>
+        </fieldset>
+
+        <div class="upc-settings">
+          <div class="upc-field">
+            <label for="upcScale" id="upcScaleLabel">Mức phóng to</label>
+            <select id="upcScale">
+              <option value="2">2x</option>
+              <option value="4" selected>4x</option>
+            </select>
+          </div>
+
+          <div id="upcApiSettings" class="upc-api-settings" hidden>
+            <div class="upc-field">
+              <label for="upcApiModel">Model OpenRouter</label>
+              <select id="upcApiModel">
+                <option value="bytedance-seed/seedream-4.5">Seedream 4.5 — cân bằng</option>
+                <option value="bytedance-seed/seedream-5-0-lite">Seedream 5.0 Lite — tiết kiệm</option>
+                <option value="google/gemini-3.1-flash-image">Nano Banana 2 — nhanh</option>
+                <option value="google/gemini-3-pro-image">Nano Banana Pro — chất lượng</option>
+                <option value="sourceful/riverflow-v2.5-pro">Riverflow 2.5 Pro</option>
+              </select>
+            </div>
+
+            <div class="upc-field">
+              <label for="upcApiKey">OpenRouter API key</label>
+              <div class="upc-key-wrap">
+                <input
+                  id="upcApiKey"
+                  type="password"
+                  inputmode="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="sk-or-v1-…"
+                  aria-describedby="upcKeyNote upcErrorMsg"
+                />
+                <button id="upcToggleKey" type="button" class="upc-key-toggle" aria-label="Hiện API key" aria-pressed="false">Hiện</button>
+              </div>
+              <p class="upc-key-note" id="upcKeyNote">Không lưu vào trình duyệt hay máy chủ của trang. Key bị xóa khỏi ô ngay khi gửi request.</p>
+            </div>
+          </div>
         </div>
 
-        <div id="upcDropzone" class="conv-dropzone">
+        <div id="upcDropzone" class="conv-dropzone" role="button" tabindex="0" aria-controls="upcFileInput">
           <div class="conv-dz-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="32" height="32"><path fill="currentColor" d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           <p class="conv-text">Kéo ảnh vào đây hoặc <span class="link">chọn file</span></p>
-          <p class="conv-hint">jpg, png, webp… &middot; ảnh càng lớn xử lý càng lâu</p>
+          <p class="conv-hint" id="upcDropHint">jpg, png, webp… &middot; ảnh càng lớn xử lý càng lâu</p>
           <input type="file" id="upcFileInput" accept="image/*" hidden />
         </div>
 
-        <div id="upcLoading" class="conv-status hidden">
+        <div id="upcLoading" class="conv-status hidden" role="status" aria-live="polite">
           <div class="conv-loading">
             <span class="conv-spinner" aria-hidden="true"></span>
             <span id="upcLoadingText">Đang tải model AI (lần đầu)…</span>
           </div>
         </div>
 
-        <div id="upcProgress" class="conv-status hidden">
+        <div id="upcProgress" class="conv-status hidden" role="status" aria-live="polite">
           <div class="conv-filename" id="upcFilename"></div>
           <div class="conv-bar"><div class="conv-fill" id="upcFill"></div></div>
           <div class="conv-stats">
@@ -177,7 +231,7 @@
         </div>
 
         <div id="upcDone" class="conv-status hidden">
-          <p class="conv-success">✓ Upscale xong</p>
+          <p class="conv-success" id="upcSuccess">✓ Upscale xong</p>
           <p class="conv-doneFile" id="upcDoneFile"></p>
           <div class="upc-compare">
             <div>
@@ -185,19 +239,19 @@
               <img id="upcOriginalImg" alt="Ảnh gốc" />
             </div>
             <div>
-              <p class="upc-compare-label">Đã upscale</p>
+              <p class="upc-compare-label" id="upcResultLabel">Đã upscale</p>
               <img id="upcResultImg" alt="Ảnh đã upscale" />
             </div>
           </div>
           <div class="conv-actions">
             <a id="upcDownload" class="btn btn-primary" href="#" download>
-              <span class="btn-label">Tải ảnh đã upscale</span>
+              <span class="btn-label" id="upcDownloadLabel">Tải ảnh đã upscale</span>
             </a>
             <button id="upcReset" type="button" class="btn btn-ghost">Upscale ảnh khác</button>
           </div>
         </div>
 
-        <div id="upcError" class="conv-status hidden">
+        <div id="upcError" class="conv-status hidden" role="alert">
           <p class="conv-err" id="upcErrorMsg"></p>
           <button id="upcRetry" type="button" class="btn btn-ghost">Thử lại</button>
         </div>
@@ -206,18 +260,18 @@
       <section class="card glass info-card">
         <h2>Cách dùng</h2>
         <ol>
-          <li>Chọn mức phóng to (2x hoặc 4x).</li>
+          <li>Chọn <strong>Local</strong> để xử lý riêng tư hoặc <strong>OpenRouter</strong> để dùng AI Enhance.</li>
+          <li>Với OpenRouter, chọn model, độ phân giải và nhập API key dùng một lần.</li>
           <li>Kéo ảnh vào ô trên hoặc bấm để chọn file.</li>
-          <li>Lần đầu sẽ tải model AI (vài MB), các lần sau dùng cache nên nhanh hơn.</li>
           <li>Đợi xử lý xong rồi bấm <strong>Tải ảnh đã upscale</strong>.</li>
         </ol>
-        <p class="muted" style="margin-top:10px;font-size:12.5px;color:var(--text-dim)">Model: ESRGAN-slim, chạy qua TensorFlow.js. Ảnh chỉ tồn tại trong RAM trình duyệt — không upload đi đâu. Ảnh rất lớn có thể xử lý chậm hoặc chậm trên máy yếu.</p>
+        <p class="muted" style="margin-top:10px;font-size:12.5px;color:var(--text-dim)">Local: ảnh chỉ tồn tại trong RAM trình duyệt. OpenRouter: ảnh và prompt được gửi tới OpenRouter cùng provider đã chọn; trang này không lưu API key.</p>
       </section>
     </div>
 
     <footer class="footer">
       <p>Chỉ dùng cho mục đích cá nhân. Vui lòng tôn trọng bản quyền và quyền riêng tư của tác giả gốc.</p>
-      <p class="muted">Không lưu trữ link hay file phía máy chủ — mọi xử lý đều chạy trên trình duyệt của bạn.</p>
+      <p class="muted">Trang không lưu trữ link, file hay API key. Chế độ OpenRouter sẽ gửi ảnh trực tiếp tới dịch vụ AI để xử lý.</p>
     </footer>
   </main>
 
