@@ -271,12 +271,13 @@
 
     <footer class="footer">
       <p>Chỉ dùng cho mục đích cá nhân. Vui lòng tôn trọng bản quyền và quyền riêng tư của tác giả gốc.</p>
-      <p class="muted">Trang không lưu trữ link, file hay API key. Chế độ OpenRouter sẽ gửi ảnh trực tiếp tới dịch vụ AI để xử lý.</p>
+      <p class="muted">Trang không lưu trữ link, file hay API key. Khi tải Instagram/Facebook, link được gửi tới CORS proxy công khai để lấy media; không dán link riêng tư. Chế độ OpenRouter sẽ gửi ảnh trực tiếp tới dịch vụ AI để xử lý.</p>
     </footer>
   </main>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="proxy-fetch.js" defer></script>
   <script src="script.js" defer></script>
   <script src="converter.js" defer></script>
   <script src="vendor/upscaler/tf.min.js" defer></script>
