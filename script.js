@@ -16,6 +16,11 @@
     (u) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
   ];
   const FETCH_TIMEOUT_MS = 18000;
+  const PROXY_FETCH_TIMEOUT_MS = 8000;
+  const fetchViaProxies = window.LeakredProxyFetch.createProxyFetcher({
+    proxyBuilders: CORS_PROXIES,
+    timeoutMs: PROXY_FETCH_TIMEOUT_MS,
+  });
 
   const PLATFORM_PATTERNS = {
     tiktok: /(?:^|\.)tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com/i,
@@ -73,29 +78,6 @@
     const res = await fetchWithTimeout(url, opts);
     if (!res.ok) throw new Error("HTTP " + res.status);
     return res.text();
-  }
-
-  // Thử lần lượt các CORS proxy. Trả text (hoặc JSON nếu parseJson=true).
-  async function fetchViaProxies(targetUrl, { method = "GET", body = null, headers = {}, parseJson = false } = {}) {
-    let lastErr;
-    for (const buildProxy of CORS_PROXIES) {
-      try {
-        const url = buildProxy(targetUrl);
-        const opts = { method, headers };
-        if (body != null) opts.body = body;
-        const res = await fetchWithTimeout(url, opts);
-        if (!res.ok) { lastErr = new Error("HTTP " + res.status); continue; }
-        const text = await res.text();
-        if (!text) { lastErr = new Error("Empty body"); continue; }
-        if (parseJson) {
-          try { return JSON.parse(text); } catch { lastErr = new Error("Bad JSON"); continue; }
-        }
-        return text;
-      } catch (e) {
-        lastErr = e;
-      }
-    }
-    throw lastErr || new Error("Tất cả CORS proxy đều lỗi.");
   }
 
   // ---------- TikTok ----------
