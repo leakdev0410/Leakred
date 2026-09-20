@@ -72,6 +72,18 @@
   const errorMsg = document.getElementById("upcErrorMsg");
   const resetBtn = document.getElementById("upcReset");
   const retryBtn = document.getElementById("upcRetry");
+  const modeInputs = document.querySelectorAll('input[name="upcMode"]');
+  const promptField = document.getElementById("upcPromptField");
+  const promptInput = document.getElementById("upcPrompt");
+  const promptCount = document.getElementById("upcPromptCount");
+  const aspectField = document.getElementById("upcAspectField");
+  const aspectSelect = document.getElementById("upcAspect");
+  const generateBtn = document.getElementById("upcGenerate");
+  const originalWrap = document.getElementById("upcOriginalWrap");
+  const promptPanel = document.getElementById("upcPromptPanel");
+  const promptDisplay = document.getElementById("upcPromptDisplay");
+  const localEngineInput = document.querySelector('input[name="upcEngine"][value="local"]');
+  const apiEngineInput = document.querySelector('input[name="upcEngine"][value="openrouter"]');
 
   if (!dropzone) return;
 
@@ -105,6 +117,30 @@
       engineNote.textContent = "Local dùng ESRGAN-slim và không tải ảnh lên mạng.";
       dropHint.textContent = "jpg, png, webp… · ảnh càng lớn xử lý càng lâu";
     }
+  }
+
+  function updateModeUi() {
+    const isT2I = getMode() === "text-to-image";
+
+    if (promptField) promptField.hidden = !isT2I;
+    if (aspectField) aspectField.hidden = !isT2I;
+    if (generateBtn) generateBtn.hidden = !isT2I;
+    if (dropzone) dropzone.hidden = isT2I;
+    if (fileInput) fileInput.value = "";
+
+    if (localEngineInput) localEngineInput.disabled = isT2I;
+    if (isT2I && apiEngineInput && !apiEngineInput.checked) {
+      apiEngineInput.checked = true;
+    }
+
+    if (introEl) {
+      introEl.textContent = isT2I
+        ? "Tạo ảnh mới từ prompt bằng các model AI trên OpenRouter."
+        : "Upscale riêng tư bằng model local chạy ngay trong trình duyệt. Ảnh không rời khỏi thiết bị.";
+    }
+
+    updateEngineUi();
+    reset();
   }
 
   function setKeyVisibility(visible) {
@@ -174,6 +210,11 @@
     apiKeyInput.value = "";
     apiKeyInput.removeAttribute("aria-invalid");
     setKeyVisibility(false);
+    if (promptInput) {
+      promptInput.value = "";
+      promptInput.removeAttribute("aria-invalid");
+    }
+    updatePromptCount();
     showStatus(null);
     fileInput.value = "";
     fillEl.style.width = "0%";
@@ -181,6 +222,9 @@
     originalImg.src = "";
     resultImg.src = "";
     downloadBtn.removeAttribute("href");
+    if (originalWrap) originalWrap.hidden = false;
+    if (promptPanel) promptPanel.hidden = true;
+    if (promptDisplay) promptDisplay.textContent = "";
   }
 
   function fileToDataUrl(file) {
@@ -207,6 +251,37 @@
     return "png";
   }
 
+  function getMode() {
+    return document.querySelector('input[name="upcMode"]:checked')?.value || "upscale";
+  }
+
+  function slugifyPrompt(text) {
+    const slug = text
+      .normalize("NFKD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/đ/g, "d")
+      .replace(/[^a-z0-9\s-]+/g, " ")
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40);
+    return slug || "generated";
+  }
+
+  function validatePrompt(prompt) {
+    if (!prompt) return "Vui lòng nhập mô tả ảnh trước khi tạo.";
+    if (prompt.length > 1000) return "Mô tả quá dài (tối đa 1000 ký tự).";
+    return null;
+  }
+
+  function updatePromptCount() {
+    if (!promptCount) return;
+    const len = promptInput?.value?.length || 0;
+    promptCount.textContent = `${len}/1000`;
+  }
+
   function openRouterError(response, payload) {
     const providerMessage = payload?.error?.message || payload?.message;
     if (response.status === 401) return new Error("OpenRouter API key không hợp lệ hoặc đã hết hiệu lực.");
@@ -216,7 +291,18 @@
     return new Error(providerMessage || `OpenRouter trả về lỗi HTTP ${response.status}.`);
   }
 
-  async function finalizeResult(resultDataUrl, file, suffix, mimeType, jobId, isApi) {
+  async function finalizeResult(opts) {
+    const {
+      resultDataUrl,
+      downloadName,
+      jobId,
+      successText,
+      resultLabelText,
+      downloadLabelText,
+      altText,
+      mode,
+      promptText = "",
+    } = opts;
     if (jobId !== activeJobId) return;
     setProgress(100, "Đang tạo file…");
     resultImg.src = resultDataUrl;
@@ -226,17 +312,30 @@
     if (currentResultUrl) URL.revokeObjectURL(currentResultUrl);
     currentResultUrl = URL.createObjectURL(blob);
 
-    const baseName = file.name.replace(/\.[^.]+$/, "");
-    const extension = extensionFromMime(mimeType || blob.type || "image/png");
-    const downloadName = `${baseName}_${suffix}.${extension}`;
     downloadBtn.href = currentResultUrl;
     downloadBtn.download = downloadName;
     doneFile.textContent = downloadName;
-    successEl.textContent = isApi ? "✓ AI Enhance xong" : "✓ Upscale xong";
-    resultLabel.textContent = isApi ? "AI Enhance" : "Đã upscale";
-    resultImg.alt = resultLabel.textContent;
-    downloadLabel.textContent = isApi ? "Tải ảnh AI Enhance" : "Tải ảnh đã upscale";
+    successEl.textContent = successText;
+    resultLabel.textContent = resultLabelText;
+    resultImg.alt = altText || resultLabelText;
+    downloadLabel.textContent = downloadLabelText;
+
+    if (mode === "text-to-image") {
+      if (originalWrap) originalWrap.hidden = true;
+      if (promptPanel) promptPanel.hidden = false;
+      if (promptDisplay) promptDisplay.textContent = promptText;
+    } else {
+      if (originalWrap) originalWrap.hidden = false;
+      if (promptPanel) promptPanel.hidden = true;
+      if (promptDisplay) promptDisplay.textContent = "";
+    }
+
     showStatus(doneEl);
+  }
+
+  function buildUpscaleFileName(file, suffix) {
+    const baseName = file.name.replace(/\.[^.]+$/, "");
+    return `${baseName}_${suffix}`;
   }
 
   async function runLocal(img, file, scale, jobId) {
@@ -260,7 +359,17 @@
       },
     });
 
-    await finalizeResult(resultDataUrl, file, `upscaled_${scale}x`, "image/png", jobId, false);
+    const downloadName = `${buildUpscaleFileName(file, `upscaled_${scale}x`)}.png`;
+    await finalizeResult({
+      resultDataUrl,
+      downloadName,
+      jobId,
+      successText: "✓ Upscale xong",
+      resultLabelText: "Đã upscale",
+      downloadLabelText: "Tải ảnh đã upscale",
+      altText: "Ảnh đã upscale",
+      mode: "upscale",
+    });
   }
 
   async function runOpenRouter(img, file, model, resolution, jobId) {
@@ -330,13 +439,93 @@
         ? output.b64_json
         : `data:${mimeType};base64,${output.b64_json}`;
       const modelName = model.split("/").pop().replace(/[^a-z0-9-]+/gi, "-");
-      await finalizeResult(resultDataUrl, file, `ai_${modelName}_${resolution.toLowerCase()}`, mimeType, jobId, true);
+      const extension = extensionFromMime(mimeType);
+      const downloadName = `${buildUpscaleFileName(file, `ai_${modelName}_${resolution.toLowerCase()}`)}.${extension}`;
+      await finalizeResult({
+        resultDataUrl,
+        downloadName,
+        jobId,
+        successText: "✓ AI Enhance xong",
+        resultLabelText: "AI Enhance",
+        downloadLabelText: "Tải ảnh AI Enhance",
+        altText: "Ảnh AI Enhance",
+        mode: "upscale",
+      });
+    } finally {
+      if (currentApiController === controller) currentApiController = null;
+    }
+  }
+
+  async function runOpenRouterTextToImage(prompt, model, resolution, aspectRatio, slug, jobId) {
+    const apiKey = apiKeyInput.value.trim();
+
+    const controller = new AbortController();
+    currentApiController = controller;
+
+    setProgress(20, "Đang gửi tới OpenRouter…");
+    const request = fetch("https://openrouter.ai/api/v1/images", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        prompt,
+        resolution,
+        aspect_ratio: aspectRatio,
+        n: 1,
+      }),
+      signal: controller.signal,
+    });
+
+    apiKeyInput.value = "";
+    setKeyVisibility(false);
+
+    try {
+      const response = await request;
+      if (jobId !== activeJobId) return;
+      setProgress(85, "Đang nhận ảnh kết quả…");
+
+      let payload;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+      if (!response.ok) throw openRouterError(response, payload);
+
+      const output = payload?.data?.[0];
+      if (!output?.b64_json) {
+        throw new Error("OpenRouter không trả về dữ liệu ảnh hợp lệ.");
+      }
+
+      const mimeType = output.media_type || "image/png";
+      const resultDataUrl = output.b64_json.startsWith("data:")
+        ? output.b64_json
+        : `data:${mimeType};base64,${output.b64_json}`;
+      const modelName = model.split("/").pop().replace(/[^a-z0-9-]+/gi, "-");
+      const extension = extensionFromMime(mimeType);
+      const downloadName = `${slug}_ai_${modelName}_${resolution.toLowerCase()}.${extension}`;
+
+      await finalizeResult({
+        resultDataUrl,
+        downloadName,
+        jobId,
+        successText: "✓ Đã tạo ảnh",
+        resultLabelText: "Ảnh đã tạo",
+        downloadLabelText: "Tải ảnh đã tạo",
+        altText: "Ảnh đã tạo từ prompt",
+        mode: "text-to-image",
+        promptText: prompt,
+      });
     } finally {
       if (currentApiController === controller) currentApiController = null;
     }
   }
 
   async function handleFile(file) {
+    if (getMode() !== "upscale") return;
     if (!file.type || !file.type.startsWith("image/")) {
       showError("File không phải ảnh hợp lệ.");
       return;
@@ -384,6 +573,55 @@
     }
   }
 
+  async function handlePromptSubmit() {
+    if (getMode() !== "text-to-image") return;
+
+    const prompt = (promptInput?.value || "").trim();
+    const err = validatePrompt(prompt);
+    if (err) {
+      if (promptInput) promptInput.setAttribute("aria-invalid", "true");
+      showError(err);
+      if (promptInput) promptInput.focus();
+      return;
+    }
+    if (promptInput) promptInput.removeAttribute("aria-invalid");
+
+    const apiKey = apiKeyInput.value.trim();
+    if (!apiKey) {
+      apiKeyInput.setAttribute("aria-invalid", "true");
+      showError("Hãy nhập OpenRouter API key trước khi tạo ảnh.");
+      apiKeyInput.focus();
+      return;
+    }
+    apiKeyInput.removeAttribute("aria-invalid");
+
+    if (currentApiController) currentApiController.abort();
+    const jobId = ++activeJobId;
+    const scale = parseInt(scaleSelect.value, 10) || 4;
+    const resolution = `${scale}K`;
+    const model = OPENROUTER_MODELS.has(apiModelSelect.value)
+      ? apiModelSelect.value
+      : "bytedance-seed/seedream-4.5";
+    const aspectRatio = aspectSelect?.value || "1:1";
+    const slug = slugifyPrompt(prompt);
+
+    const preview = prompt.length > 64 ? prompt.slice(0, 64) + "…" : prompt;
+    filenameEl.textContent = `Đang tạo: "${preview}"`;
+    showStatus(progressEl);
+    setProgress(5, "Đang chuẩn bị prompt…");
+
+    generateBtn?.classList.add("loading");
+    try {
+      await runOpenRouterTextToImage(prompt, model, resolution, aspectRatio, slug, jobId);
+    } catch (error) {
+      if (error?.name === "AbortError" || jobId !== activeJobId) return;
+      console.error("[upscale]", error);
+      showError(error?.message || String(error));
+    } finally {
+      generateBtn?.classList.remove("loading");
+    }
+  }
+
   dropzone.addEventListener("click", (event) => {
     if (event.target !== fileInput) fileInput.click();
   });
@@ -427,10 +665,23 @@
   });
 
   engineInputs.forEach((input) => input.addEventListener("change", updateEngineUi));
+  modeInputs.forEach((input) => input.addEventListener("change", updateModeUi));
   apiKeyInput.addEventListener("input", () => apiKeyInput.removeAttribute("aria-invalid"));
+  promptInput?.addEventListener("input", () => {
+    promptInput.removeAttribute("aria-invalid");
+    updatePromptCount();
+  });
+  promptInput?.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      event.preventDefault();
+      if (!generateBtn.hidden) handlePromptSubmit();
+    }
+  });
   toggleKeyBtn.addEventListener("click", () => setKeyVisibility(apiKeyInput.type === "password"));
+  generateBtn?.addEventListener("click", handlePromptSubmit);
   resetBtn.addEventListener("click", reset);
   retryBtn.addEventListener("click", reset);
 
   updateEngineUi();
+  updateModeUi();
 })();
