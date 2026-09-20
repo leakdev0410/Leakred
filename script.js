@@ -67,11 +67,18 @@
       return {
         type: j.type,
         url: j.url,
-        items: j.items,
+        // tunnelUrl: Worker proxy cho media URL (fix "Bad URL hash" từ IG/FB CDN).
+        // Frontend nên dùng tunnelUrl để hiển thị + tải, không dùng url trực tiếp.
+        tunnelUrl: j.tunnelUrl || j.url,
+        items: Array.isArray(j.items) ? j.items.map((it) => ({
+          ...it,
+          tunnelUrl: it.tunnelUrl || it.url,
+        })) : undefined,
         title: j.title || "",
         author: j.author || "",
         authorAvatar: j.authorAvatar || "",
         thumbnail: j.thumbnail || "",
+        thumbnailTunnelUrl: j.thumbnailTunnelUrl || j.thumbnail || "",
         duration: j.duration || null,
         platform: j.platform || platform,
       };
@@ -503,9 +510,11 @@
       data.items.forEach((item, i) => {
         const cell = document.createElement("div");
         cell.className = "carousel-item";
+        // Dùng tunnelUrl để render (fix Bad URL hash cho IG/FB CDN).
+        const src = item.tunnelUrl || item.url;
         const node = item.kind === "video"
-          ? Object.assign(document.createElement("video"), { src: item.url, controls: true, playsInline: true })
-          : Object.assign(document.createElement("img"), { src: item.url, alt: "" });
+          ? Object.assign(document.createElement("video"), { src, controls: true, playsInline: true })
+          : Object.assign(document.createElement("img"), { src, alt: "" });
         cell.appendChild(node);
         const a = document.createElement("a");
         a.className = "item-dl";
@@ -515,7 +524,7 @@
         const fname = `leakred-${data.platform}-${i + 1}.${ext}`;
         a.addEventListener("click", (e) => {
           e.preventDefault();
-          triggerDownload(item.url, fname);
+          triggerDownload(item.tunnelUrl || item.url, fname);
         });
         cell.appendChild(a);
         grid.appendChild(cell);
@@ -534,7 +543,7 @@
         for (let i = 0; i < data.items.length; i++) {
           const it = data.items[i];
           const ext = inferExt(it.url, it.kind === "image" ? "jpg" : "mp4");
-          await triggerDownload(it.url, `leakred-${data.platform}-${i + 1}.${ext}`);
+          await triggerDownload(it.tunnelUrl || it.url, `leakred-${data.platform}-${i + 1}.${ext}`);
           await new Promise((r) => setTimeout(r, 400));
         }
       });
@@ -545,11 +554,13 @@
     }
 
     const isVideo = data.type === "video";
+    const mediaSrc = data.tunnelUrl || data.url;
     const media = isVideo
       ? Object.assign(document.createElement("video"), {
-          src: data.url, controls: true, playsInline: true, poster: data.thumbnail || "",
+          src: mediaSrc, controls: true, playsInline: true,
+          poster: data.thumbnailTunnelUrl || data.thumbnail || "",
         })
-      : Object.assign(document.createElement("img"), { src: data.url, alt: data.title || "" });
+      : Object.assign(document.createElement("img"), { src: mediaSrc, alt: data.title || "" });
     media.className = "result-media";
     resultEl.appendChild(media);
 
@@ -565,7 +576,7 @@
     dl.innerHTML = `<span class="btn-label">${isVideo ? "Tải video" : "Tải ảnh"}</span>`;
     const ext = inferExt(data.url, isVideo ? "mp4" : "jpg");
     const fname = buildFilename(data.platform, isVideo ? "video" : "image").replace(/\.(mp4|jpg)$/, "." + ext);
-    dl.addEventListener("click", () => triggerDownload(data.url, fname));
+    dl.addEventListener("click", () => triggerDownload(data.tunnelUrl || data.url, fname));
     actions.appendChild(dl);
 
     if (data.thumbnail && isVideo) {
@@ -574,7 +585,7 @@
       thumbBtn.innerHTML = `<span class="btn-label">Tải ảnh bìa</span>`;
       thumbBtn.addEventListener("click", () => {
         const tExt = inferExt(data.thumbnail, "jpg");
-        triggerDownload(data.thumbnail, buildFilename(data.platform, "image").replace(/\.jpg$/, "." + tExt));
+        triggerDownload(data.thumbnailTunnelUrl || data.thumbnail, buildFilename(data.platform, "image").replace(/\.jpg$/, "." + tExt));
       });
       actions.appendChild(thumbBtn);
     }

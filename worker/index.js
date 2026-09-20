@@ -75,6 +75,35 @@ function json(data, status = 200, extraHeaders = {}) {
   });
 }
 
+// Worker base URL (lấy từ request). Dùng để build tunnel URL trong response.
+let _workerOrigin = null;
+function getWorkerOrigin(request) {
+  if (_workerOrigin) return _workerOrigin;
+  try { _workerOrigin = new URL(request.url).origin; } catch (_) { _workerOrigin = ""; }
+  return _workerOrigin;
+}
+
+// Tạo tunnel URL từ media URL gốc. Frontend dùng URL này để hiển thị + tải
+// (vì IG/FB CDN URL ký theo request, không truy cập trực tiếp từ browser được).
+function tunnelFor(origin, mediaUrl, filename) {
+  if (!origin || !mediaUrl) return mediaUrl;
+  const params = new URLSearchParams({ url: mediaUrl });
+  if (filename) params.set("name", filename);
+  return `${origin}/api/tunnel?${params.toString()}`;
+}
+
+// Thêm tunnelUrl vào response data.
+function withTunnels(origin, data) {
+  if (!data || !origin) return data;
+  const copy = { ...data };
+  if (copy.url) copy.tunnelUrl = tunnelFor(origin, copy.url);
+  if (copy.thumbnail) copy.thumbnailTunnelUrl = tunnelFor(origin, copy.thumbnail);
+  if (Array.isArray(copy.items)) {
+    copy.items = copy.items.map((it) => it.url ? { ...it, tunnelUrl: tunnelFor(origin, it.url) } : it);
+  }
+  return copy;
+}
+
 function browserHeaders(cookie) {
   return {
     "User-Agent": CHROME_UA,
@@ -440,6 +469,79 @@ async function handleTikTok(url) {
 }
 
 // =========================================================================
+// Tunnel — phục vụ media URL qua Worker để giữ nguyên chữ ký của IG/FB CDN.
+// Khi browser fetch trực tiếp các CDN URL, signature bị invalidate và IG/FB
+// trả "Bad URL hash". Worker tunnel fetch + stream lại với cùng signature.
+//
+//   GET /api/tunnel?url=<encoded-media-url>&name=<optional-filename>
+//
+// =========================================================================
+
+const ALLOWED_TUNNEL_HOSTS = [
+  // Instagram CDN
+  "scontent.cdninstagram.com",
+  "scontent-", "cdninstagram",
+  // Facebook CDN
+  "fbcdn.net", "scontent.",
+  "fbsbx.com", "lookaside.",
+  // TikTok CDN
+  "tiktok", "musical.ly", "tikwm",
+  // Generic
+  "fb.com", "facebook.com",
+];
+
+function isTunnelHostAllowed(host) {
+  const h = host.toLowerCase();
+  return ALLOWED_TUNNEL_HOSTS.some((pattern) => h.includes(pattern));
+}
+
+async function handleTunnel(url, filename, TIMEOUT) {
+  if (!url) return json({ ok: false, error: "missing ?url=" }, 400);
+  let parsed;
+  try { parsed = new URL(url); } catch (_) {
+    return json({ ok: false, error: "invalid url" }, 400);
+  }
+  if (!/^https?:$/.test(parsed.protocol)) {
+    return json({ ok: false, error: "only http(s) allowed" }, 400);
+  }
+  if (!isTunnelHostAllowed(parsed.hostname)) {
+    return json({ ok: false, error: "host not allowed: " + parsed.hostname }, 403);
+  }
+
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), TIMEOUT * 4); // longer timeout cho file lớn
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": CHROME_UA,
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Referer": "https://www.instagram.com/",
+      },
+      signal: ctrl.signal,
+      redirect: "follow",
+    });
+    clearTimeout(id);
+    if (!res.ok) {
+      return json({ ok: false, error: "tunnel upstream HTTP " + res.status }, 502);
+    }
+    const headers = new Headers();
+    headers.set("Access-Control-Allow-Origin", "*");
+    headers.set("Content-Type", res.headers.get("Content-Type") || "application/octet-stream");
+    const len = res.headers.get("Content-Length");
+    if (len) headers.set("Content-Length", len);
+    if (filename) {
+      headers.set("Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    }
+    return new Response(res.body, { status: 200, headers });
+  } catch (e) {
+    clearTimeout(id);
+    return json({ ok: false, error: "tunnel failed: " + e.message }, 502);
+  }
+}
+
+// =========================================================================
 // Routes
 // =========================================================================
 
@@ -471,22 +573,30 @@ export default {
     const fbCookie = request.headers.get("X-FB-Cookie") || "";
 
     try {
+      const origin = getWorkerOrigin(request);
       if (p === "/api/instagram") {
         const result = await handleInstagram(target, igCookie, TIMEOUT);
         if (result.ok) result.platform = "instagram";
+        if (result.ok) Object.assign(result, withTunnels(origin, result));
         const status = result.ok ? 200 : 502;
         return json(result, status);
       }
       if (p === "/api/facebook") {
         const result = await handleFacebook(target, fbCookie, TIMEOUT);
         if (result.ok) result.platform = "facebook";
+        if (result.ok) Object.assign(result, withTunnels(origin, result));
         const status = result.ok ? 200 : 502;
         return json(result, status);
       }
       if (p === "/api/tiktok") {
         const result = await handleTikTok(target);
+        if (result.ok) Object.assign(result, withTunnels(origin, result));
         const status = result.ok ? 200 : 502;
         return json(result, status);
+      }
+      if (p === "/api/tunnel") {
+        const filename = u.searchParams.get("name") || "";
+        return handleTunnel(target, filename, TIMEOUT);
       }
       return json({ ok: false, error: "not found: " + p }, 404);
     } catch (e) {
