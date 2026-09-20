@@ -27,7 +27,7 @@
   // const WORKER_TOKEN = "";   // nếu Worker đã set secret WORKER_TOKEN
   const WORKER_TIMEOUT_MS = 12000;
 
-  // Cookie tự nhập (optional). Lấy từ input#igCookie / input#fbCookie.
+  // Cookie tự nhập (optional). Lấy từ input #igCookie / input #fbCookie.
   // Không persist — mất khi tải lại trang (giống pattern OpenRouter key).
   function getIgCookie() {
     const el = document.getElementById("igCookie");
@@ -36,6 +36,35 @@
   function getFbCookie() {
     const el = document.getElementById("fbCookie");
     return el && el.value ? el.value.trim() : "";
+  }
+
+  // Build tunnel URL cho bất kỳ media URL nào — kể cả khi response không có sẵn.
+  // IG/FB CDN URL có chữ ký số theo session, browser fetch trực tiếp fail với
+  // "Bad URL hash". Worker tunnel fetch + truyền lại để giữ nguyên signature.
+  function makeTunnelUrl(mediaUrl, filename) {
+    if (!WORKER_BASE || !mediaUrl) return mediaUrl;
+    const params = new URLSearchParams({ url: mediaUrl });
+    if (filename) params.set("name", filename);
+    return `${WORKER_BASE}/api/tunnel?${params.toString()}`;
+  }
+
+  // Thêm tunnelUrl cho mọi media URL trong result (cả từ Worker lẫn fallback).
+  function ensureTunnelUrls(data) {
+    if (!data) return data;
+    const out = { ...data };
+    if (out.url && !out.tunnelUrl) out.tunnelUrl = makeTunnelUrl(out.url);
+    if (out.thumbnail && !out.thumbnailTunnelUrl) {
+      out.thumbnailTunnelUrl = makeTunnelUrl(out.thumbnail);
+    }
+    if (Array.isArray(out.items)) {
+      out.items = out.items.map((it) => {
+        if (it && it.url && !it.tunnelUrl) {
+          return { ...it, tunnelUrl: makeTunnelUrl(it.url) };
+        }
+        return it;
+      });
+    }
+    return out;
   }
 
   // Gọi Worker endpoint. Trả null nếu Worker chưa cấu hình / lỗi mạng / HTTP lỗi.
@@ -653,7 +682,7 @@
     resultEl.classList.add("hidden");
 
     try {
-      const data = await HANDLERS[platform](url);
+      const data = ensureTunnelUrls(await HANDLERS[platform](url));
       renderResult(data);
       showToast("Đã sẵn sàng — bấm Tải để lưu về máy.", "success");
       resultEl.scrollIntoView({ behavior: "smooth", block: "start" });
