@@ -143,6 +143,27 @@
         <h2 class="conv-title">Upscale & AI Enhance</h2>
         <p class="conv-sub" id="upcIntro">Upscale riêng tư bằng model local chạy ngay trong trình duyệt. Ảnh không rời khỏi thiết bị.</p>
 
+        <fieldset class="upc-engine upc-mode" aria-describedby="upcModeNote">
+          <legend>Chế độ</legend>
+          <div class="upc-engine-options">
+            <label class="upc-engine-card">
+              <input type="radio" name="upcMode" value="upscale" checked />
+              <span>
+                <strong>Upscale ảnh</strong>
+                <small>Phóng to &amp; phục hồi ảnh có sẵn</small>
+              </span>
+            </label>
+            <label class="upc-engine-card">
+              <input type="radio" name="upcMode" value="text-to-image" />
+              <span>
+                <strong>Tạo ảnh từ text</strong>
+                <small>Sinh ảnh mới từ mô tả</small>
+              </span>
+            </label>
+          </div>
+          <p class="upc-engine-note" id="upcModeNote">"Tạo ảnh từ text" không cần ảnh đầu vào và chỉ dùng OpenRouter.</p>
+        </fieldset>
+
         <fieldset class="upc-engine" aria-describedby="upcEngineNote">
           <legend>Phương thức xử lý</legend>
           <div class="upc-engine-options">
@@ -165,6 +186,18 @@
         </fieldset>
 
         <div class="upc-settings">
+          <div class="upc-field" id="upcPromptField" hidden>
+            <label for="upcPrompt">Mô tả ảnh (prompt)</label>
+            <textarea
+              id="upcPrompt"
+              rows="4"
+              maxlength="1000"
+              placeholder="Mô tả chi tiết ảnh cần tạo. VD: chú mèo đen ngồi trên sân thượng lúc hoàng hôn, ánh sáng điện ảnh"
+              aria-describedby="upcPromptCount"
+            ></textarea>
+            <div class="upc-prompt-meta"><span id="upcPromptCount">0/1000</span></div>
+          </div>
+
           <div class="upc-field">
             <label for="upcScale" id="upcScaleLabel">Mức phóng to</label>
             <select id="upcScale">
@@ -174,6 +207,22 @@
           </div>
 
           <div id="upcApiSettings" class="upc-api-settings" hidden>
+            <div class="upc-field" id="upcAspectField" hidden>
+              <label for="upcAspect">Tỉ lệ khung hình</label>
+              <select id="upcAspect">
+                <option value="1:1" selected>1:1 — vuông</option>
+                <option value="2:3">2:3 — chân dung dọc</option>
+                <option value="3:2">3:2 — chân dung ngang</option>
+                <option value="3:4">3:4 — dọc</option>
+                <option value="4:3">4:3 — ngang</option>
+                <option value="4:5">4:5 — dọc nhỏ</option>
+                <option value="5:4">5:4 — ngang nhỏ</option>
+                <option value="9:16">9:16 — Story dọc</option>
+                <option value="16:9">16:9 — ngang rộng</option>
+                <option value="21:9">21:9 — siêu rộng</option>
+              </select>
+            </div>
+
             <div class="upc-field">
               <label for="upcApiModel">Model OpenRouter</label>
               <select id="upcApiModel">
@@ -205,6 +254,11 @@
           </div>
         </div>
 
+        <button id="upcGenerate" type="button" class="btn btn-primary upc-submit" hidden>
+          <span class="btn-label">Tạo ảnh</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
+
         <div id="upcDropzone" class="conv-dropzone" role="button" tabindex="0" aria-controls="upcFileInput">
           <div class="conv-dz-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="32" height="32"><path fill="currentColor" d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -234,9 +288,13 @@
           <p class="conv-success" id="upcSuccess">✓ Upscale xong</p>
           <p class="conv-doneFile" id="upcDoneFile"></p>
           <div class="upc-compare">
-            <div>
+            <div id="upcOriginalWrap">
               <p class="upc-compare-label">Ảnh gốc</p>
               <img id="upcOriginalImg" alt="Ảnh gốc" />
+            </div>
+            <div id="upcPromptPanel" hidden>
+              <p class="upc-compare-label">Prompt đã dùng</p>
+              <p id="upcPromptDisplay" class="upc-prompt-display"></p>
             </div>
             <div>
               <p class="upc-compare-label" id="upcResultLabel">Đã upscale</p>
@@ -247,7 +305,7 @@
             <a id="upcDownload" class="btn btn-primary" href="#" download>
               <span class="btn-label" id="upcDownloadLabel">Tải ảnh đã upscale</span>
             </a>
-            <button id="upcReset" type="button" class="btn btn-ghost">Upscale ảnh khác</button>
+            <button id="upcReset" type="button" class="btn btn-ghost">Làm ảnh khác</button>
           </div>
         </div>
 
@@ -260,10 +318,10 @@
       <section class="card glass info-card">
         <h2>Cách dùng</h2>
         <ol>
-          <li>Chọn <strong>Local</strong> để xử lý riêng tư hoặc <strong>OpenRouter</strong> để dùng AI Enhance.</li>
-          <li>Với OpenRouter, chọn model, độ phân giải và nhập API key dùng một lần.</li>
-          <li>Kéo ảnh vào ô trên hoặc bấm để chọn file.</li>
-          <li>Đợi xử lý xong rồi bấm <strong>Tải ảnh đã upscale</strong>.</li>
+          <li>Chọn chế độ <strong>Upscale ảnh</strong> hoặc <strong>Tạo ảnh từ text</strong>.</li>
+          <li>Với Upscale ảnh: chọn Local (riêng tư, miễn phí) hoặc OpenRouter (AI Enhance). Kéo ảnh vào ô bên dưới.</li>
+          <li>Với Tạo ảnh từ text: nhập mô tả, chọn tỉ lệ khung hình và độ phân giải, nhập OpenRouter API key.</li>
+          <li>Đợi xử lý rồi bấm <strong>Tải ảnh</strong>.</li>
         </ol>
         <p class="muted" style="margin-top:10px;font-size:12.5px;color:var(--text-dim)">Local: ảnh chỉ tồn tại trong RAM trình duyệt. OpenRouter: ảnh và prompt được gửi tới OpenRouter cùng provider đã chọn; trang này không lưu API key.</p>
       </section>
@@ -271,12 +329,13 @@
 
     <footer class="footer">
       <p>Chỉ dùng cho mục đích cá nhân. Vui lòng tôn trọng bản quyền và quyền riêng tư của tác giả gốc.</p>
-      <p class="muted">Trang không lưu trữ link, file hay API key. Chế độ OpenRouter sẽ gửi ảnh trực tiếp tới dịch vụ AI để xử lý.</p>
+      <p class="muted">Trang không lưu trữ link, file hay API key. Khi tải Instagram/Facebook, link được gửi tới CORS proxy công khai để lấy media; không dán link riêng tư. Chế độ OpenRouter sẽ gửi ảnh trực tiếp tới dịch vụ AI để xử lý.</p>
     </footer>
   </main>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="proxy-fetch.js" defer></script>
   <script src="script.js" defer></script>
   <script src="converter.js" defer></script>
   <script src="vendor/upscaler/tf.min.js" defer></script>
