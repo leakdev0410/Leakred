@@ -591,7 +591,7 @@ html, body {
 }
 .upc-engine-options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 8px;
 }
 .upc-engine-card {
@@ -756,6 +756,48 @@ html, body {
   min-height: 88px;
   max-height: 280px;
   overflow: auto;
+}
+
+/* Staged image preview inside dropzone (image-to-image mode) */
+.upc-staged {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+}
+.upc-staged[hidden] { display: none; }
+.upc-staged img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  flex: 0 0 auto;
+}
+.upc-staged-meta {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.upc-staged-meta span {
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upc-staged-clear {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 @media (max-width: 560px) {

@@ -160,8 +160,15 @@
                 <small>Sinh ảnh mới từ mô tả</small>
               </span>
             </label>
+            <label class="upc-engine-card">
+              <input type="radio" name="upcMode" value="image-to-image" />
+              <span>
+                <strong>Biến đổi ảnh theo mô tả</strong>
+                <small>Dùng prompt để chỉnh sửa ảnh có sẵn</small>
+              </span>
+            </label>
           </div>
-          <p class="upc-engine-note" id="upcModeNote">"Tạo ảnh từ text" không cần ảnh đầu vào và chỉ dùng OpenRouter.</p>
+          <p class="upc-engine-note" id="upcModeNote">Hai chế độ OpenRouter cần prompt; "Tạo ảnh từ text" không cần ảnh đầu vào.</p>
         </fieldset>
 
         <fieldset class="upc-engine" aria-describedby="upcEngineNote">
@@ -266,6 +273,13 @@
           <p class="conv-text">Kéo ảnh vào đây hoặc <span class="link">chọn file</span></p>
           <p class="conv-hint" id="upcDropHint">jpg, png, webp… &middot; ảnh càng lớn xử lý càng lâu</p>
           <input type="file" id="upcFileInput" accept="image/*" hidden />
+          <div id="upcStagedPreview" class="upc-staged" hidden>
+            <img id="upcStagedImg" alt="Ảnh đã chọn" />
+            <div class="upc-staged-meta">
+              <span id="upcStagedName"></span>
+              <button id="upcStagedClear" type="button" class="btn btn-ghost upc-staged-clear">Bỏ chọn</button>
+            </div>
+          </div>
         </div>
 
         <div id="upcLoading" class="conv-status hidden" role="status" aria-live="polite">
@@ -318,9 +332,10 @@
       <section class="card glass info-card">
         <h2>Cách dùng</h2>
         <ol>
-          <li>Chọn chế độ <strong>Upscale ảnh</strong> hoặc <strong>Tạo ảnh từ text</strong>.</li>
-          <li>Với Upscale ảnh: chọn Local (riêng tư, miễn phí) hoặc OpenRouter (AI Enhance). Kéo ảnh vào ô bên dưới.</li>
-          <li>Với Tạo ảnh từ text: nhập mô tả, chọn tỉ lệ khung hình và độ phân giải, nhập OpenRouter API key.</li>
+          <li>Chọn chế độ <strong>Upscale ảnh</strong>, <strong>Tạo ảnh từ text</strong> hoặc <strong>Biến đổi ảnh theo mô tả</strong>.</li>
+          <li><strong>Upscale ảnh:</strong> chọn Local (riêng tư, miễn phí) hoặc OpenRouter (AI Enhance). Kéo ảnh vào ô bên dưới.</li>
+          <li><strong>Tạo ảnh từ text:</strong> nhập mô tả, chọn tỉ lệ khung hình và độ phân giải, nhập OpenRouter API key, bấm "Tạo ảnh".</li>
+          <li><strong>Biến đổi ảnh theo mô tả:</strong> kéo ảnh vào ô bên dưới (sẽ được stage chờ), nhập prompt mô tả chỉnh sửa, bấm "Tạo ảnh".</li>
           <li>Đợi xử lý rồi bấm <strong>Tải ảnh</strong>.</li>
         </ol>
         <p class="muted" style="margin-top:10px;font-size:12.5px;color:var(--text-dim)">Local: ảnh chỉ tồn tại trong RAM trình duyệt. OpenRouter: ảnh và prompt được gửi tới OpenRouter cùng provider đã chọn; trang này không lưu API key.</p>

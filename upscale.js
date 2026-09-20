@@ -84,6 +84,10 @@
   const promptDisplay = document.getElementById("upcPromptDisplay");
   const localEngineInput = document.querySelector('input[name="upcEngine"][value="local"]');
   const apiEngineInput = document.querySelector('input[name="upcEngine"][value="openrouter"]');
+  const stagedPreview = document.getElementById("upcStagedPreview");
+  const stagedImg = document.getElementById("upcStagedImg");
+  const stagedName = document.getElementById("upcStagedName");
+  const stagedClearBtn = document.getElementById("upcStagedClear");
 
   if (!dropzone) return;
 
@@ -93,6 +97,8 @@
   let currentResultUrl = null;
   let currentApiController = null;
   let activeJobId = 0;
+  let pendingImageFile = null;
+  let pendingImageUrl = null;
 
   function getEngine() {
     return document.querySelector('input[name="upcEngine"]:checked')?.value || "local";
@@ -120,27 +126,35 @@
   }
 
   function updateModeUi() {
-    const isT2I = getMode() === "text-to-image";
+    const mode = getMode();
+    const isT2I = mode === "text-to-image";
+    const isI2I = mode === "image-to-image";
 
-    if (promptField) promptField.hidden = !isT2I;
+    if (promptField) promptField.hidden = !isT2I && !isI2I;
     if (aspectField) aspectField.hidden = !isT2I;
-    if (generateBtn) generateBtn.hidden = !isT2I;
+    if (generateBtn) generateBtn.hidden = !isT2I && !isI2I;
     if (dropzone) dropzone.hidden = isT2I;
     if (fileInput) fileInput.value = "";
 
-    if (localEngineInput) localEngineInput.disabled = isT2I;
-    if (isT2I && apiEngineInput && !apiEngineInput.checked) {
+    if (localEngineInput) localEngineInput.disabled = isT2I || isI2I;
+    if ((isT2I || isI2I) && apiEngineInput && !apiEngineInput.checked) {
       apiEngineInput.checked = true;
     }
 
     if (introEl) {
-      introEl.textContent = isT2I
-        ? "Tạo ảnh mới từ prompt bằng các model AI trên OpenRouter."
-        : "Upscale riêng tư bằng model local chạy ngay trong trình duyệt. Ảnh không rời khỏi thiết bị.";
+      introEl.textContent =
+        mode === "text-to-image"
+          ? "Tạo ảnh mới từ prompt bằng các model AI trên OpenRouter."
+          : mode === "image-to-image"
+            ? "Chỉnh sửa ảnh có sẵn theo prompt bằng các model AI trên OpenRouter."
+            : "Upscale riêng tư bằng model local chạy ngay trong trình duyệt. Ảnh không rời khỏi thiết bị.";
     }
+
+    if (!isI2I) clearPendingImage();
 
     updateEngineUi();
     reset();
+    updateGenerateButtonState();
   }
 
   function setKeyVisibility(visible) {
@@ -215,6 +229,7 @@
       promptInput.removeAttribute("aria-invalid");
     }
     updatePromptCount();
+    clearPendingImage();
     showStatus(null);
     fileInput.value = "";
     fillEl.style.width = "0%";
@@ -280,6 +295,42 @@
     if (!promptCount) return;
     const len = promptInput?.value?.length || 0;
     promptCount.textContent = `${len}/1000`;
+  }
+
+  function setPendingImage(file) {
+    clearPendingImage();
+    pendingImageFile = file;
+    pendingImageUrl = URL.createObjectURL(file);
+    if (stagedImg) stagedImg.src = pendingImageUrl;
+    if (stagedName) stagedName.textContent = file.name;
+    if (stagedPreview) stagedPreview.hidden = false;
+    updateGenerateButtonState();
+  }
+
+  function clearPendingImage() {
+    if (pendingImageUrl) {
+      URL.revokeObjectURL(pendingImageUrl);
+      pendingImageUrl = null;
+    }
+    pendingImageFile = null;
+    if (stagedImg) stagedImg.src = "";
+    if (stagedName) stagedName.textContent = "";
+    if (stagedPreview) stagedPreview.hidden = true;
+    updateGenerateButtonState();
+  }
+
+  function updateGenerateButtonState() {
+    if (!generateBtn) return;
+    const mode = getMode();
+    if (mode === "text-to-image") {
+      generateBtn.disabled = false;
+    } else if (mode === "image-to-image") {
+      const hasImage = !!pendingImageFile;
+      const hasPrompt = !!(promptInput?.value || "").trim();
+      generateBtn.disabled = !(hasImage && hasPrompt);
+    } else {
+      generateBtn.disabled = true;
+    }
   }
 
   function openRouterError(response, payload) {
@@ -372,7 +423,7 @@
     });
   }
 
-  async function runOpenRouter(img, file, model, resolution, jobId) {
+  async function runOpenRouter(img, file, model, resolution, jobId, customPrompt = null) {
     const apiKey = apiKeyInput.value.trim();
     setProgress(8, "Đang đọc ảnh để gửi…");
     const imageDataUrl = await fileToDataUrl(file);
@@ -381,12 +432,13 @@
     const controller = new AbortController();
     currentApiController = controller;
     const aspectRatio = closestAspectRatio(img.naturalWidth || img.width, img.naturalHeight || img.height);
-    const prompt = [
+    const defaultPrompt = [
       `Upscale and restore this image to ${resolution}.`,
       "Preserve the exact composition, subject identity, facial features, text, colors, lighting, camera angle and aspect ratio.",
       "Remove compression artifacts and noise, recover natural fine details and sharp edges.",
       "Do not add, remove, crop, redesign or reposition anything.",
     ].join(" ");
+    const prompt = customPrompt || defaultPrompt;
 
     setProgress(20, "Đang gửi tới OpenRouter…");
     // Key chỉ được dùng để tạo header request, không ghi vào storage/cookie/URL.
@@ -524,8 +576,20 @@
     }
   }
 
-  async function handleFile(file) {
-    if (getMode() !== "upscale") return;
+  async function handleImageSubmit(file) {
+    const mode = getMode();
+
+    if (mode === "image-to-image") {
+      if (!file.type || !file.type.startsWith("image/")) {
+        showError("File không phải ảnh hợp lệ.");
+        return;
+      }
+      setPendingImage(file);
+      return;
+    }
+
+    if (mode !== "upscale") return;
+
     if (!file.type || !file.type.startsWith("image/")) {
       showError("File không phải ảnh hợp lệ.");
       return;
@@ -573,7 +637,7 @@
     }
   }
 
-  async function handlePromptSubmit() {
+  async function handleTextToImageSubmit() {
     if (getMode() !== "text-to-image") return;
 
     const prompt = (promptInput?.value || "").trim();
@@ -622,6 +686,76 @@
     }
   }
 
+  async function handleImageToImageSubmit() {
+    if (getMode() !== "image-to-image") return;
+
+    const file = pendingImageFile;
+    const prompt = (promptInput?.value || "").trim();
+
+    const err = validatePrompt(prompt);
+    if (err) {
+      if (promptInput) promptInput.setAttribute("aria-invalid", "true");
+      showError(err);
+      if (promptInput) promptInput.focus();
+      return;
+    }
+    if (promptInput) promptInput.removeAttribute("aria-invalid");
+
+    if (!file) {
+      showError("Hãy chọn ảnh trước khi tạo.");
+      return;
+    }
+
+    const apiKey = apiKeyInput.value.trim();
+    if (!apiKey) {
+      apiKeyInput.setAttribute("aria-invalid", "true");
+      showError("Hãy nhập OpenRouter API key trước khi tạo ảnh.");
+      apiKeyInput.focus();
+      return;
+    }
+    apiKeyInput.removeAttribute("aria-invalid");
+
+    if (currentApiController) currentApiController.abort();
+    const jobId = ++activeJobId;
+    const scale = parseInt(scaleSelect.value, 10) || 4;
+    const resolution = `${scale}K`;
+    const model = OPENROUTER_MODELS.has(apiModelSelect.value)
+      ? apiModelSelect.value
+      : "bytedance-seed/seedream-4.5";
+
+    filenameEl.textContent = file.name;
+    showStatus(progressEl);
+    setProgress(0, "Đang đọc ảnh…");
+
+    if (currentOriginalUrl) URL.revokeObjectURL(currentOriginalUrl);
+    currentOriginalUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.src = currentOriginalUrl;
+
+    generateBtn?.classList.add("loading");
+    try {
+      await img.decode();
+      if (jobId !== activeJobId) return;
+      originalImg.src = currentOriginalUrl;
+      await runOpenRouter(img, file, model, resolution, jobId, prompt);
+    } catch (error) {
+      if (error?.name === "AbortError" || jobId !== activeJobId) return;
+      console.error("[upscale]", error);
+      showError(error?.message || String(error));
+    } finally {
+      generateBtn?.classList.remove("loading");
+    }
+  }
+
+  async function handleGenerate() {
+    const mode = getMode();
+    if (mode === "text-to-image") {
+      await handleTextToImageSubmit();
+    } else if (mode === "image-to-image") {
+      await handleImageToImageSubmit();
+    }
+  }
+
   dropzone.addEventListener("click", (event) => {
     if (event.target !== fileInput) fileInput.click();
   });
@@ -632,7 +766,7 @@
     }
   });
   fileInput.addEventListener("change", (event) => {
-    if (event.target.files?.[0]) handleFile(event.target.files[0]);
+    if (event.target.files?.[0]) handleImageSubmit(event.target.files[0]);
   });
 
   ["dragenter", "dragover"].forEach((eventName) => {
@@ -650,7 +784,7 @@
     });
   });
   dropzone.addEventListener("drop", (event) => {
-    if (event.dataTransfer.files?.[0]) handleFile(event.dataTransfer.files[0]);
+    if (event.dataTransfer.files?.[0]) handleImageSubmit(event.dataTransfer.files[0]);
   });
 
   window.addEventListener("dragover", (event) => {
@@ -670,15 +804,17 @@
   promptInput?.addEventListener("input", () => {
     promptInput.removeAttribute("aria-invalid");
     updatePromptCount();
+    updateGenerateButtonState();
   });
   promptInput?.addEventListener("keydown", (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
       event.preventDefault();
-      if (!generateBtn.hidden) handlePromptSubmit();
+      if (!generateBtn.hidden) handleGenerate();
     }
   });
   toggleKeyBtn.addEventListener("click", () => setKeyVisibility(apiKeyInput.type === "password"));
-  generateBtn?.addEventListener("click", handlePromptSubmit);
+  generateBtn?.addEventListener("click", handleGenerate);
+  stagedClearBtn?.addEventListener("click", clearPendingImage);
   resetBtn.addEventListener("click", reset);
   retryBtn.addEventListener("click", reset);
 
