@@ -147,10 +147,17 @@
           <legend>Chế độ</legend>
           <div class="upc-engine-options">
             <label class="upc-engine-card">
-              <input type="radio" name="upcMode" value="upscale" checked />
+              <input type="radio" name="upcMode" value="upscale-local" checked />
               <span>
-                <strong>Upscale ảnh</strong>
-                <small>Phóng to &amp; phục hồi ảnh có sẵn</small>
+                <strong>Upscale local</strong>
+                <small>Trong trình duyệt · riêng tư · miễn phí</small>
+              </span>
+            </label>
+            <label class="upc-engine-card">
+              <input type="radio" name="upcMode" value="upscale-openrouter" />
+              <span>
+                <strong>Upscale OpenRouter</strong>
+                <small>AI Enhance · cần API key</small>
               </span>
             </label>
             <label class="upc-engine-card">
@@ -163,33 +170,12 @@
             <label class="upc-engine-card">
               <input type="radio" name="upcMode" value="image-to-image" />
               <span>
-                <strong>Biến đổi ảnh theo mô tả</strong>
-                <small>Dùng prompt để chỉnh sửa ảnh có sẵn</small>
+                <strong>Sửa ảnh từ ảnh và text</strong>
+                <small>Chỉnh sửa ảnh có sẵn theo prompt</small>
               </span>
             </label>
           </div>
-          <p class="upc-engine-note" id="upcModeNote">Hai chế độ OpenRouter cần prompt; "Tạo ảnh từ text" không cần ảnh đầu vào.</p>
-        </fieldset>
-
-        <fieldset class="upc-engine" aria-describedby="upcEngineNote">
-          <legend>Phương thức xử lý</legend>
-          <div class="upc-engine-options">
-            <label class="upc-engine-card">
-              <input type="radio" name="upcEngine" value="local" checked />
-              <span>
-                <strong>Local</strong>
-                <small>Riêng tư · miễn phí</small>
-              </span>
-            </label>
-            <label class="upc-engine-card">
-              <input type="radio" name="upcEngine" value="openrouter" />
-              <span>
-                <strong>OpenRouter</strong>
-                <small>AI Enhance · chất lượng cao</small>
-              </span>
-            </label>
-          </div>
-          <p class="upc-engine-note" id="upcEngineNote">Local dùng ESRGAN-slim và không tải ảnh lên mạng.</p>
+          <p class="upc-engine-note" id="upcModeNote">Upscale local chạy thuần trong trình duyệt, các chế độ còn lại dùng OpenRouter.</p>
         </fieldset>
 
         <div class="upc-settings">
@@ -332,13 +318,14 @@
       <section class="card glass info-card">
         <h2>Cách dùng</h2>
         <ol>
-          <li>Chọn chế độ <strong>Upscale ảnh</strong>, <strong>Tạo ảnh từ text</strong> hoặc <strong>Biến đổi ảnh theo mô tả</strong>.</li>
-          <li><strong>Upscale ảnh:</strong> chọn Local (riêng tư, miễn phí) hoặc OpenRouter (AI Enhance). Kéo ảnh vào ô bên dưới.</li>
-          <li><strong>Tạo ảnh từ text:</strong> nhập mô tả, chọn tỉ lệ khung hình và độ phân giải, nhập OpenRouter API key, bấm "Tạo ảnh".</li>
-          <li><strong>Biến đổi ảnh theo mô tả:</strong> kéo ảnh vào ô bên dưới (sẽ được stage chờ), nhập prompt mô tả chỉnh sửa, bấm "Tạo ảnh".</li>
+          <li>Chọn một trong 4 chế độ bên trên.</li>
+          <li><strong>Upscale local:</strong> kéo ảnh vào ô bên dưới, chọn 2x hoặc 4x.</li>
+          <li><strong>Upscale OpenRouter:</strong> kéo ảnh, chọn model + độ phân giải, nhập API key.</li>
+          <li><strong>Tạo ảnh từ text:</strong> nhập prompt, chọn tỉ lệ + độ phân giải, nhập API key, bấm "Tạo ảnh".</li>
+          <li><strong>Sửa ảnh từ ảnh và text:</strong> kéo ảnh (sẽ stage chờ), nhập prompt, nhập API key, bấm "Tạo ảnh".</li>
           <li>Đợi xử lý rồi bấm <strong>Tải ảnh</strong>.</li>
         </ol>
-        <p class="muted" style="margin-top:10px;font-size:12.5px;color:var(--text-dim)">Local: ảnh chỉ tồn tại trong RAM trình duyệt. OpenRouter: ảnh và prompt được gửi tới OpenRouter cùng provider đã chọn; trang này không lưu API key.</p>
+        <p class="muted" style="margin-top:10px;font-size:12.5px;color:var(--text-dim)">Upscale local: ảnh chỉ tồn tại trong RAM trình duyệt. Ba chế độ OpenRouter: ảnh/prompt và API key được gửi tới OpenRouter; trang này không lưu API key.</p>
       </section>
     </div>
 

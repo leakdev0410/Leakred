@@ -44,8 +44,6 @@
   const dropzone = document.getElementById("upcDropzone");
   const dropHint = document.getElementById("upcDropHint");
   const fileInput = document.getElementById("upcFileInput");
-  const engineInputs = document.querySelectorAll('input[name="upcEngine"]');
-  const engineNote = document.getElementById("upcEngineNote");
   const introEl = document.getElementById("upcIntro");
   const scaleSelect = document.getElementById("upcScale");
   const scaleLabel = document.getElementById("upcScaleLabel");
@@ -73,6 +71,7 @@
   const resetBtn = document.getElementById("upcReset");
   const retryBtn = document.getElementById("upcRetry");
   const modeInputs = document.querySelectorAll('input[name="upcMode"]');
+  const modeNoteEl = document.getElementById("upcModeNote");
   const promptField = document.getElementById("upcPromptField");
   const promptInput = document.getElementById("upcPrompt");
   const promptCount = document.getElementById("upcPromptCount");
@@ -82,8 +81,6 @@
   const originalWrap = document.getElementById("upcOriginalWrap");
   const promptPanel = document.getElementById("upcPromptPanel");
   const promptDisplay = document.getElementById("upcPromptDisplay");
-  const localEngineInput = document.querySelector('input[name="upcEngine"][value="local"]');
-  const apiEngineInput = document.querySelector('input[name="upcEngine"][value="openrouter"]');
   const stagedPreview = document.getElementById("upcStagedPreview");
   const stagedImg = document.getElementById("upcStagedImg");
   const stagedName = document.getElementById("upcStagedName");
@@ -100,59 +97,90 @@
   let pendingImageFile = null;
   let pendingImageUrl = null;
 
-  function getEngine() {
-    return document.querySelector('input[name="upcEngine"]:checked')?.value || "local";
+  function getMode() {
+    return document.querySelector('input[name="upcMode"]:checked')?.value || "upscale-local";
   }
 
-  function updateEngineUi() {
-    const isApi = getEngine() === "openrouter";
-    apiSettings.hidden = !isApi;
-    apiKeyInput.setAttribute("aria-required", isApi ? "true" : "false");
-    scaleLabel.textContent = isApi ? "Độ phân giải đầu ra" : "Mức phóng to";
-    scaleSelect.options[0].textContent = isApi ? "2K" : "2x";
-    scaleSelect.options[1].textContent = isApi ? "4K" : "4x";
+  const MODE_CONFIG = {
+    "upscale-local": {
+      showDropzone: true,
+      showPrompt: false,
+      showAspect: false,
+      showGenerate: false,
+      showApiSettings: false,
+      scaleLabel: "Mức phóng to",
+      scaleOptions: ["2x", "4x"],
+      intro: "Upscale riêng tư bằng model local chạy ngay trong trình duyệt. Ảnh không rời khỏi thiết bị.",
+      modeNote: "Local dùng ESRGAN-slim và không tải ảnh lên mạng.",
+      dropHint: "jpg, png, webp… · ảnh càng lớn xử lý càng lâu",
+    },
+    "upscale-openrouter": {
+      showDropzone: true,
+      showPrompt: false,
+      showAspect: false,
+      showGenerate: false,
+      showApiSettings: true,
+      scaleLabel: "Độ phân giải đầu ra",
+      scaleOptions: ["2K", "4K"],
+      intro: "AI Enhance bằng model ảnh trên OpenRouter, phù hợp khi cần phục hồi và tái tạo thêm chi tiết.",
+      modeNote: "Ảnh và prompt sẽ gửi trực tiếp tới OpenRouter/provider. Trang không lưu API key.",
+      dropHint: "jpg, png, webp… · ảnh sẽ được gửi tới OpenRouter để xử lý",
+    },
+    "text-to-image": {
+      showDropzone: false,
+      showPrompt: true,
+      showAspect: true,
+      showGenerate: true,
+      showApiSettings: true,
+      scaleLabel: "Độ phân giải đầu ra",
+      scaleOptions: ["2K", "4K"],
+      intro: "Tạo ảnh mới từ prompt bằng các model AI trên OpenRouter.",
+      modeNote: "Không cần ảnh đầu vào. Prompt và API key được gửi tới OpenRouter.",
+      dropHint: "",
+    },
+    "image-to-image": {
+      showDropzone: true,
+      showPrompt: true,
+      showAspect: false,
+      showGenerate: true,
+      showApiSettings: true,
+      scaleLabel: "Độ phân giải đầu ra",
+      scaleOptions: ["2K", "4K"],
+      intro: "Chỉnh sửa ảnh có sẵn theo prompt bằng các model AI trên OpenRouter.",
+      modeNote: "Ảnh và prompt được gửi tới OpenRouter. Trang không lưu API key.",
+      dropHint: "jpg, png, webp… · ảnh sẽ được gửi tới OpenRouter kèm prompt",
+    },
+  };
 
-    if (isApi) {
-      introEl.textContent = "AI Enhance bằng model ảnh trên OpenRouter, phù hợp khi cần phục hồi và tái tạo thêm chi tiết.";
-      engineNote.textContent = "Ảnh và prompt sẽ được gửi trực tiếp tới OpenRouter/provider. Trang không lưu API key.";
-      dropHint.textContent = "jpg, png, webp… · ảnh sẽ được gửi tới OpenRouter để xử lý";
-    } else {
-      apiKeyInput.value = "";
-      setKeyVisibility(false);
-      introEl.textContent = "Upscale riêng tư bằng model local chạy ngay trong trình duyệt. Ảnh không rời khỏi thiết bị.";
-      engineNote.textContent = "Local dùng ESRGAN-slim và không tải ảnh lên mạng.";
-      dropHint.textContent = "jpg, png, webp… · ảnh càng lớn xử lý càng lâu";
-    }
+  function getModeConfig() {
+    return MODE_CONFIG[getMode()] || MODE_CONFIG["upscale-local"];
+  }
+
+  function applyScaleOptions(config) {
+    if (scaleLabel) scaleLabel.textContent = config.scaleLabel;
+    if (scaleSelect?.options?.[0]) scaleSelect.options[0].textContent = config.scaleOptions[0];
+    if (scaleSelect?.options?.[1]) scaleSelect.options[1].textContent = config.scaleOptions[1];
   }
 
   function updateModeUi() {
     const mode = getMode();
-    const isT2I = mode === "text-to-image";
+    const config = getModeConfig();
     const isI2I = mode === "image-to-image";
 
-    if (promptField) promptField.hidden = !isT2I && !isI2I;
-    if (aspectField) aspectField.hidden = !isT2I;
-    if (generateBtn) generateBtn.hidden = !isT2I && !isI2I;
-    if (dropzone) dropzone.hidden = isT2I;
+    if (promptField) promptField.hidden = !config.showPrompt;
+    if (aspectField) aspectField.hidden = !config.showAspect;
+    if (generateBtn) generateBtn.hidden = !config.showGenerate;
+    if (apiSettings) apiSettings.hidden = !config.showApiSettings;
+    if (dropzone) dropzone.hidden = !config.showDropzone;
     if (fileInput) fileInput.value = "";
 
-    if (localEngineInput) localEngineInput.disabled = isT2I || isI2I;
-    if ((isT2I || isI2I) && apiEngineInput && !apiEngineInput.checked) {
-      apiEngineInput.checked = true;
-    }
-
-    if (introEl) {
-      introEl.textContent =
-        mode === "text-to-image"
-          ? "Tạo ảnh mới từ prompt bằng các model AI trên OpenRouter."
-          : mode === "image-to-image"
-            ? "Chỉnh sửa ảnh có sẵn theo prompt bằng các model AI trên OpenRouter."
-            : "Upscale riêng tư bằng model local chạy ngay trong trình duyệt. Ảnh không rời khỏi thiết bị.";
-    }
+    if (introEl) introEl.textContent = config.intro;
+    if (modeNoteEl) modeNoteEl.textContent = config.modeNote;
+    if (dropHint) dropHint.textContent = config.dropHint;
 
     if (!isI2I) clearPendingImage();
 
-    updateEngineUi();
+    applyScaleOptions(config);
     reset();
     updateGenerateButtonState();
   }
@@ -264,10 +292,6 @@
     if (mimeType.includes("webp")) return "webp";
     if (mimeType.includes("jpeg") || mimeType.includes("jpg")) return "jpg";
     return "png";
-  }
-
-  function getMode() {
-    return document.querySelector('input[name="upcMode"]:checked')?.value || "upscale";
   }
 
   function slugifyPrompt(text) {
@@ -588,15 +612,14 @@
       return;
     }
 
-    if (mode !== "upscale") return;
+    if (mode !== "upscale-local" && mode !== "upscale-openrouter") return;
 
     if (!file.type || !file.type.startsWith("image/")) {
       showError("File không phải ảnh hợp lệ.");
       return;
     }
 
-    const engine = getEngine();
-    if (engine === "openrouter" && !apiKeyInput.value.trim()) {
+    if (mode === "upscale-openrouter" && !apiKeyInput.value.trim()) {
       apiKeyInput.setAttribute("aria-invalid", "true");
       showError("Hãy nhập OpenRouter API key trước khi chọn ảnh.");
       apiKeyInput.focus();
@@ -607,9 +630,6 @@
     if (currentApiController) currentApiController.abort();
     const jobId = ++activeJobId;
     const scale = parseInt(scaleSelect.value, 10) || 4;
-    const model = OPENROUTER_MODELS.has(apiModelSelect.value)
-      ? apiModelSelect.value
-      : "bytedance-seed/seedream-4.5";
 
     filenameEl.textContent = file.name;
     showStatus(progressEl);
@@ -625,10 +645,14 @@
       if (jobId !== activeJobId) return;
       originalImg.src = currentOriginalUrl;
 
-      if (engine === "openrouter") {
-        await runOpenRouter(img, file, model, `${scale}K`, jobId);
-      } else {
+      if (mode === "upscale-local") {
         await runLocal(img, file, scale, jobId);
+      } else {
+        const resolution = `${scale}K`;
+        const model = OPENROUTER_MODELS.has(apiModelSelect.value)
+          ? apiModelSelect.value
+          : "bytedance-seed/seedream-4.5";
+        await runOpenRouter(img, file, model, resolution, jobId);
       }
     } catch (error) {
       if (error?.name === "AbortError" || jobId !== activeJobId) return;
@@ -798,7 +822,6 @@
     if (currentApiController) currentApiController.abort();
   });
 
-  engineInputs.forEach((input) => input.addEventListener("change", updateEngineUi));
   modeInputs.forEach((input) => input.addEventListener("change", updateModeUi));
   apiKeyInput.addEventListener("input", () => apiKeyInput.removeAttribute("aria-invalid"));
   promptInput?.addEventListener("input", () => {
@@ -818,6 +841,5 @@
   resetBtn.addEventListener("click", reset);
   retryBtn.addEventListener("click", reset);
 
-  updateEngineUi();
   updateModeUi();
 })();
