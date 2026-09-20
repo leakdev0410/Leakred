@@ -159,6 +159,88 @@ async function fetchWithTimeout(url, opts, ms) {
 }
 
 // =========================================================================
+// 3rd-party no-auth API (btch-downloader)
+// Gọi tới https://backend1.tioo.eu.org/{endpoint}?url=<encoded>
+// Endpoint: igdl, fbdown, ttdl, twitter, youtube, aio, ...
+// Trả về JSON với { status, result: [{url, thumbnail}], ... }
+// Khi có video URL thật → trả về cho frontend.
+// =========================================================================
+
+const BTCH_BASE = "https://backend1.tioo.eu.org";
+
+async function callBtch(endpoint, url, TIMEOUT) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), TIMEOUT);
+  try {
+    const res = await fetch(`${BTCH_BASE}/${endpoint}?url=${encodeURIComponent(url)}`, {
+      signal: ctrl.signal,
+      headers: { "Accept": "application/json", "User-Agent": CHROME_UA },
+    });
+    clearTimeout(id);
+    if (!res.ok) return { ok: false, reason: "btch-http-" + res.status };
+    const text = await res.text();
+    let j;
+    try { j = JSON.parse(text); }
+    catch { return { ok: false, reason: "btch-bad-json:" + text.slice(0, 100) }; }
+    // btch trả về array [{status: true, ...}] hoặc object {status: true, ...}
+    // hoặc error string "Request Failed With Code XXX"
+    if (typeof j === "string") return { ok: false, reason: "btch-error:" + j };
+    if (Array.isArray(j) ? !j[0] || j[0].status !== true : !j || j.status !== true) {
+      return { ok: false, reason: "btch-not-ok", j };
+    }
+    return { ok: true, data: j };
+  } catch (e) {
+    clearTimeout(id);
+    return { ok: false, reason: e.name === "AbortError" ? "btch-timeout" : e.message };
+  }
+}
+
+// Strategy 1: btch-downloader igdl — no auth needed for public content
+async function igStrategyBtch(url, TIMEOUT) {
+  // btch API thường rất chậm (10-30s) do phải tự lấy cookies + extract từ IG
+  // → dùng timeout riêng dài hơn (max ~30s cho Worker free tier)
+  const r = await callBtch("igdl", url, 30000);
+  if (!r.ok) return r;
+  const items = Array.isArray(r.data) ? r.data : (r.data.result || []);
+  const mediaItem = items.find((it) => it && it.url) || items[0];
+  if (!mediaItem || !mediaItem.url) return { ok: false, reason: "btch-empty" };
+  // Detect video: rapidcdn.app/v2 endpoint streams MP4, while /thumb is image
+  // Plus the original IG CDN URL pattern /v/t16/ = video
+  const isVideo = /\.(mp4|mov|m4a)(\?|$)/i.test(mediaItem.url)
+    || /\/v\/t16\//.test(mediaItem.url)
+    || /rapidcdn\.app\/v2/.test(mediaItem.url);
+  return {
+    ok: true, source: "btch-igdl",
+    type: isVideo ? "video" : "image",
+    url: mediaItem.url,
+    thumbnail: mediaItem.thumbnail || "",
+    title: "",
+  };
+}
+
+// Strategy 2 (Facebook): btch-downloader fbdown
+async function fbStrategyBtch(url, TIMEOUT) {
+  const r = await callBtch("fbdown", url, 30000);
+  if (!r.ok) return r;
+  const data = r.data;
+  // Cấu trúc: { status, Normal_video, HD, ... } hoặc { result: [...] }
+  let videoUrl = data.HD || data.Normal_video || data.hd || data.normal_video || data.video;
+  let thumb = data.thumbnail || "";
+  if (!videoUrl && Array.isArray(data.result) && data.result[0]) {
+    videoUrl = data.result[0].url || data.result[0].Normal_video || data.result[0].HD;
+    thumb = data.result[0].thumbnail || thumb;
+  }
+  if (!videoUrl) return { ok: false, reason: "btch-empty" };
+  return {
+    ok: true, source: "btch-fbdown",
+    type: "video",
+    url: videoUrl,
+    thumbnail: thumb,
+    title: data.title || "",
+  };
+}
+
+// =========================================================================
 // Instagram — yt-dlp strategy port
 // =========================================================================
 
@@ -326,19 +408,23 @@ async function handleInstagram(url, cookie, TIMEOUT) {
   const shortcode = extractShortcode(url);
   if (!shortcode) return { ok: false, error: "URL Instagram không hợp lệ" };
 
-  // Strategy 1: GraphQL (ưu tiên khi có cookie)
+  // Strategy 1: btch-downloader no-auth API (ưu tiên — work cho public content).
+  const b = await igStrategyBtch(url, TIMEOUT);
+  if (b.ok) return b;
+
+  // Strategy 2: GraphQL (ưu tiên khi có cookie)
   if (cookie) {
     const r = await igStrategyGraphql(cookie, shortcode, TIMEOUT);
     if (r.ok) return r;
   }
-  // Strategy 2: page parse (luôn thử)
+  // Strategy 3: page parse (luôn thử)
   const p = await igStrategyPageParse(cookie, shortcode, TIMEOUT);
   if (p.ok) return p;
   return {
     ok: false,
     error: cookie
       ? "Không lấy được media IG (cookie có thể đã hết hạn hoặc post này không truy cập được)"
-      : "Không lấy được media IG. Thử thêm sessionid cookie (xem hướng dẫn trong README).",
+      : "Không lấy được media IG. Có thể backend tạm lỗi, thử lại sau.",
   };
 }
 
@@ -417,7 +503,10 @@ async function fbStrategyPageParse(cookie, rawUrl, TIMEOUT) {
 async function handleFacebook(url, cookie, TIMEOUT) {
   const id = extractFbVideoId(url);
   if (!id) return { ok: false, error: "URL Facebook không hợp lệ" };
-  // Normalize URL for fetch
+  // Strategy 1: btch-downloader no-auth API (ưu tiên).
+  const b = await fbStrategyBtch(url, TIMEOUT);
+  if (b.ok) return b;
+  // Strategy 2: page parse với cookie
   const normalized = url.includes("facebook.com") || url.includes("fb.watch") ? url : `https://www.facebook.com/watch/?v=${id}`;
   const r = await fbStrategyPageParse(cookie, normalized, TIMEOUT);
   if (r.ok) return r;
@@ -425,7 +514,7 @@ async function handleFacebook(url, cookie, TIMEOUT) {
     ok: false,
     error: cookie
       ? "Không lấy được video FB (cookie có thể hết hạn hoặc post này không truy cập được)"
-      : "Không lấy được video FB. Thử thêm c_user cookie (xem README).",
+      : "Không lấy được video FB. Có thể backend tạm lỗi, thử lại sau.",
   };
 }
 
