@@ -22,6 +22,65 @@
     timeoutMs: PROXY_FETCH_TIMEOUT_MS,
   });
 
+  // Cloudflare Worker endpoint (xem worker/README.md).
+  const WORKER_BASE = "https://leakred-downloader.lequan04102003.workers.dev";
+  // const WORKER_TOKEN = "";   // nếu Worker đã set secret WORKER_TOKEN
+  const WORKER_TIMEOUT_MS = 12000;
+
+  // Cookie tự nhập (optional). Lấy từ input#igCookie / input#fbCookie.
+  // Không persist — mất khi tải lại trang (giống pattern OpenRouter key).
+  function getIgCookie() {
+    const el = document.getElementById("igCookie");
+    return el && el.value ? el.value.trim() : "";
+  }
+  function getFbCookie() {
+    const el = document.getElementById("fbCookie");
+    return el && el.value ? el.value.trim() : "";
+  }
+
+  // Gọi Worker endpoint. Trả null nếu Worker chưa cấu hình / lỗi mạng / HTTP lỗi.
+  async function fetchViaWorker(platform, url) {
+    if (!WORKER_BASE) return null;
+    const ctrl = new AbortController();
+    const id = setTimeout(() => ctrl.abort(), WORKER_TIMEOUT_MS);
+    try {
+      const headers = {};
+      if (typeof WORKER_TOKEN === "string" && WORKER_TOKEN) {
+        headers.Authorization = "Bearer " + WORKER_TOKEN;
+      }
+      if (platform === "instagram") {
+        const c = getIgCookie();
+        if (c) headers["X-IG-Cookie"] = c;
+      } else if (platform === "facebook") {
+        const c = getFbCookie();
+        if (c) headers["X-FB-Cookie"] = c;
+      }
+      const res = await fetch(
+        `${WORKER_BASE}/api/${platform}?url=${encodeURIComponent(url)}`,
+        { signal: ctrl.signal, headers },
+      );
+      clearTimeout(id);
+      if (!res.ok) return null;
+      const j = await res.json();
+      if (!j || !j.ok) return null;
+      // Chuẩn hoá về cấu trúc giống các nhánh khác để render chung.
+      return {
+        type: j.type,
+        url: j.url,
+        items: j.items,
+        title: j.title || "",
+        author: j.author || "",
+        authorAvatar: j.authorAvatar || "",
+        thumbnail: j.thumbnail || "",
+        duration: j.duration || null,
+        platform: j.platform || platform,
+      };
+    } catch (_) {
+      clearTimeout(id);
+      return null;
+    }
+  }
+
   const PLATFORM_PATTERNS = {
     tiktok: /(?:^|\.)tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com/i,
     instagram: /(?:^|\.)instagram\.com|ddinstagram\.com/i,
@@ -303,6 +362,10 @@
 
   // ---------- Instagram ----------
   async function fetchInstagram(url) {
+    // Worker là nhánh chính: gọi thẳng, không qua CORS proxy.
+    const fromWorker = await fetchViaWorker("instagram", url);
+    if (fromWorker) return fromWorker;
+
     try {
       const html = await callSnapsave(url);
       const data = parseSnapsaveHtml(html, "instagram");
@@ -339,6 +402,10 @@
 
   // ---------- Facebook ----------
   async function fetchFacebook(url) {
+    // Worker là nhánh chính: gọi thẳng, không qua CORS proxy.
+    const fromWorker = await fetchViaWorker("facebook", url);
+    if (fromWorker) return fromWorker;
+
     try {
       const html = await callSnapsave(url);
       const data = parseSnapsaveHtml(html, "facebook");

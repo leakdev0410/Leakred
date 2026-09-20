@@ -1,0 +1,29 @@
+name = "leakred-downloader"
+main = "index.js"
+compatibility_date = "2024-09-01"
+
+# Workers free tier: 100k requests/day, 10ms CPU per request.
+# Bind a KV namespace if you want caching (optional but recommended):
+# 1) Create the namespace: `wrangler kv namespace create CACHE`
+# 2) Paste the returned `id` below.
+# 3) Run `wrangler kv:put CACHE:health '{"ok":true}'` to verify.
+
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# Optional: set a custom secret to require a shared token from the frontend.
+# Frontend must send `Authorization: Bearer <token>` matching this value.
+# Useful if you want to prevent random abuse of your worker URL.
+# 1) `wrangler secret put WORKER_TOKEN`
+# 2) The frontend reads its own copy from localStorage and sends it.
+
+[vars]
+# Default User-Agent used when scraping IG/FB pages.
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+
+# Per-strategy timeout in ms. Worker total budget is ~30s on free tier.
+STRATEGY_TIMEOUT_MS = "6000"
+
+# Logging verbosity (1 = log every strategy result, 0 = only final).
+LOG_LEVEL = "1"

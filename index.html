@@ -62,6 +62,28 @@
           </button>
         </form>
 
+        <details class="cookie-section">
+          <summary>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4zm0 10.99h7c-.5 4.5-3.5 8.4-7 9.93V12H5V6.3l7-3.11v8.8z"/></svg>
+            <span>Cookie IG / FB (tuỳ chọn, tăng tỉ lệ tải thành công)</span>
+          </summary>
+          <p class="cookie-hint">
+            Một số video/ảnh IG/FB yêu cầu đăng nhập. Paste cookie session của bạn
+            vào ô tương ứng — sẽ gửi kèm qua Worker, không lưu lại sau khi tải lại trang.
+            <a href="worker/README.md" target="_blank" rel="noopener">Hướng dẫn lấy cookie</a>.
+          </p>
+          <div class="cookie-grid">
+            <label class="cookie-field">
+              <span>Instagram (sessionid=...)</span>
+              <input id="igCookie" type="password" autocomplete="off" spellcheck="false" placeholder="sessionid=abc123..." />
+            </label>
+            <label class="cookie-field">
+              <span>Facebook (c_user=...; xs=...)</span>
+              <input id="fbCookie" type="password" autocomplete="off" spellcheck="false" placeholder="c_user=123; xs=abc..." />
+            </label>
+          </div>
+        </details>
+
         <p class="hint" id="hint">Hỗ trợ: TikTok (video / ảnh, không watermark) · Instagram (Reel, Post, Carousel) · Facebook (video, Reel)</p>
       </section>
 
