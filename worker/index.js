@@ -409,6 +409,7 @@ async function handleInstagram(url, cookie, TIMEOUT) {
   if (!shortcode) return { ok: false, error: "URL Instagram không hợp lệ" };
 
   // Strategy 1: btch-downloader no-auth API (ưu tiên — work cho public content).
+  // Cloudflare Worker free tier có hard limit 30s wall clock → btch timeout thường xuyên.
   const b = await igStrategyBtch(url, TIMEOUT);
   if (b.ok) return b;
 
