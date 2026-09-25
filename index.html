@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Leakred — Tải video & ảnh, Convert 4:3 → 16:9</title>
-  <meta name="description" content="Tải video và ảnh từ TikTok, Instagram, Facebook không kèm logo. Convert video 4:3 thành 16:9 (cho CS2) ngay trong trình duyệt." />
+  <meta name="description" content="Tải video và ảnh từ TikTok không kèm logo. Convert video 4:3 thành 16:9 (cho CS2) ngay trong trình duyệt." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -18,7 +18,7 @@
         <span class="logo-text">Leakred</span>
       </div>
       <h1 class="title">Tải video, ảnh &amp; <em>convert</em></h1>
-      <p class="tagline">Tải nội dung từ TikTok / Instagram / Facebook và stretch video 4:3 → 16:9 ngay trong trình duyệt.</p>
+      <p class="tagline">Tải video / ảnh TikTok không watermark và stretch video 4:3 → 16:9 ngay trong trình duyệt.</p>
     </header>
 
     <nav class="tab-nav" role="tablist">
@@ -30,17 +30,9 @@
     <div id="tab-download" class="tab-content" role="tabpanel">
       <section class="card glass input-card">
         <div class="platforms">
-          <div class="platform-badge" data-platform="tiktok" title="TikTok">
+          <div class="platform-badge active" data-platform="tiktok" title="TikTok">
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16.5 3a5.5 5.5 0 0 0 4.5 4.5v3a8.5 8.5 0 0 1-4.5-1.3v6.3a6 6 0 1 1-6-6c.34 0 .67.03 1 .09v3.18a3 3 0 1 0 2 2.83V3h3z"/></svg>
             <span>TikTok</span>
-          </div>
-          <div class="platform-badge" data-platform="instagram" title="Instagram">
-            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23a3.7 3.7 0 0 1-.9 1.38c-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.7 3.7 0 0 1-1.38-.9 3.7 3.7 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16zM12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63a5.9 5.9 0 0 0-2.13 1.39A5.9 5.9 0 0 0 .62 4.15c-.3.76-.5 1.64-.56 2.9C0 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.14.56 2.9.31.81.73 1.5 1.39 2.13.63.66 1.32 1.08 2.13 1.39.76.3 1.64.5 2.9.56C8.33 24 8.74 24 12 24s3.67 0 4.95-.07c1.27-.06 2.14-.26 2.9-.56a5.9 5.9 0 0 0 2.13-1.39 5.9 5.9 0 0 0 1.39-2.13c.3-.76.5-1.64.56-2.9.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.14-.56-2.9a5.9 5.9 0 0 0-1.39-2.13A5.9 5.9 0 0 0 19.85.63c-.76-.3-1.64-.5-2.9-.56C15.67 0 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zm0 10.16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-10.92a1.44 1.44 0 1 0 0-2.88 1.44 1.44 0 0 0 0 2.88z"/></svg>
-            <span>Instagram</span>
-          </div>
-          <div class="platform-badge" data-platform="facebook" title="Facebook">
-            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>
-            <span>Facebook</span>
           </div>
         </div>
 
@@ -48,7 +40,7 @@
           <input
             id="urlInput"
             type="url"
-            placeholder="Dán link TikTok / Instagram / Facebook..."
+            placeholder="Dán link TikTok..."
             aria-label="Đường dẫn cần tải"
             required
           />
@@ -62,29 +54,7 @@
           </button>
         </form>
 
-        <details class="cookie-section">
-          <summary>
-            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4zm0 10.99h7c-.5 4.5-3.5 8.4-7 9.93V12H5V6.3l7-3.11v8.8z"/></svg>
-            <span>Cookie IG / FB (tuỳ chọn, tăng tỉ lệ tải thành công)</span>
-          </summary>
-          <p class="cookie-hint">
-            Một số video/ảnh IG/FB yêu cầu đăng nhập. Paste cookie session của bạn
-            vào ô tương ứng — sẽ gửi kèm qua Worker, không lưu lại sau khi tải lại trang.
-            <a href="worker/README.md" target="_blank" rel="noopener">Hướng dẫn lấy cookie</a>.
-          </p>
-          <div class="cookie-grid">
-            <label class="cookie-field">
-              <span>Instagram (sessionid=...)</span>
-              <input id="igCookie" type="password" autocomplete="off" spellcheck="false" placeholder="sessionid=abc123..." />
-            </label>
-            <label class="cookie-field">
-              <span>Facebook (c_user=...; xs=...)</span>
-              <input id="fbCookie" type="password" autocomplete="off" spellcheck="false" placeholder="c_user=123; xs=abc..." />
-            </label>
-          </div>
-        </details>
-
-        <p class="hint" id="hint">Hỗ trợ: TikTok (video / ảnh, không watermark) · Instagram (Reel, Post, Carousel) · Facebook (video, Reel)</p>
+        <p class="hint" id="hint">Hỗ trợ: TikTok (video / ảnh, không watermark)</p>
       </section>
 
       <section id="result" class="card glass result-card hidden" aria-live="polite"></section>
@@ -92,7 +62,7 @@
       <section class="card glass info-card">
         <h2>Cách dùng</h2>
         <ol>
-          <li>Mở app TikTok / Instagram / Facebook, chọn video hoặc bài đăng cần tải.</li>
+          <li>Mở app TikTok, chọn video hoặc bài đăng cần tải.</li>
           <li>Bấm "Chia sẻ" → "Sao chép liên kết".</li>
           <li>Quay lại trang này, dán link vào ô trên và bấm <strong>Tải về</strong>.</li>
           <li>Bấm nút <strong>Tải file</strong> để lưu video / ảnh về máy.</li>
@@ -353,13 +323,12 @@
 
     <footer class="footer">
       <p>Chỉ dùng cho mục đích cá nhân. Vui lòng tôn trọng bản quyền và quyền riêng tư của tác giả gốc.</p>
-      <p class="muted">Trang không lưu trữ link, file hay API key. Khi tải Instagram/Facebook, link được gửi tới CORS proxy công khai để lấy media; không dán link riêng tư. Chế độ OpenRouter sẽ gửi ảnh trực tiếp tới dịch vụ AI để xử lý.</p>
+      <p class="muted">Trang không lưu trữ link, file hay API key. Link TikTok được gửi tới tikwm.com (dịch vụ công khai) để lấy media; không dán link riêng tư. Chế độ OpenRouter sẽ gửi ảnh trực tiếp tới dịch vụ AI để xử lý.</p>
     </footer>
   </main>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="proxy-fetch.js" defer></script>
   <script src="script.js" defer></script>
   <script src="converter.js" defer></script>
   <script src="vendor/upscaler/tf.min.js" defer></script>

@@ -10,117 +10,10 @@
   const toastEl = $("#toast");
   const badges = document.querySelectorAll(".platform-badge");
 
-  const CORS_PROXIES = [
-    (u) => "https://corsproxy.io/?" + encodeURIComponent(u),
-    (u) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
-    (u) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
-  ];
   const FETCH_TIMEOUT_MS = 18000;
-  const PROXY_FETCH_TIMEOUT_MS = 8000;
-  const fetchViaProxies = window.LeakredProxyFetch.createProxyFetcher({
-    proxyBuilders: CORS_PROXIES,
-    timeoutMs: PROXY_FETCH_TIMEOUT_MS,
-  });
-
-  // Cloudflare Worker endpoint (xem worker/README.md).
-  const WORKER_BASE = "https://leakred-downloader.lequan04102003.workers.dev";
-  // const WORKER_TOKEN = "";   // nếu Worker đã set secret WORKER_TOKEN
-  const WORKER_TIMEOUT_MS = 12000;
-
-  // Cookie tự nhập (optional). Lấy từ input #igCookie / input #fbCookie.
-  // Không persist — mất khi tải lại trang (giống pattern OpenRouter key).
-  function getIgCookie() {
-    const el = document.getElementById("igCookie");
-    return el && el.value ? el.value.trim() : "";
-  }
-  function getFbCookie() {
-    const el = document.getElementById("fbCookie");
-    return el && el.value ? el.value.trim() : "";
-  }
-
-  // Build tunnel URL cho bất kỳ media URL nào — kể cả khi response không có sẵn.
-  // IG/FB CDN URL có chữ ký số theo session, browser fetch trực tiếp fail với
-  // "Bad URL hash". Worker tunnel fetch + truyền lại để giữ nguyên signature.
-  function makeTunnelUrl(mediaUrl, filename) {
-    if (!WORKER_BASE || !mediaUrl) return mediaUrl;
-    const params = new URLSearchParams({ url: mediaUrl });
-    if (filename) params.set("name", filename);
-    return `${WORKER_BASE}/api/tunnel?${params.toString()}`;
-  }
-
-  // Thêm tunnelUrl cho mọi media URL trong result (cả từ Worker lẫn fallback).
-  function ensureTunnelUrls(data) {
-    if (!data) return data;
-    const out = { ...data };
-    if (out.url && !out.tunnelUrl) out.tunnelUrl = makeTunnelUrl(out.url);
-    if (out.thumbnail && !out.thumbnailTunnelUrl) {
-      out.thumbnailTunnelUrl = makeTunnelUrl(out.thumbnail);
-    }
-    if (Array.isArray(out.items)) {
-      out.items = out.items.map((it) => {
-        if (it && it.url && !it.tunnelUrl) {
-          return { ...it, tunnelUrl: makeTunnelUrl(it.url) };
-        }
-        return it;
-      });
-    }
-    return out;
-  }
-
-  // Gọi Worker endpoint. Trả null nếu Worker chưa cấu hình / lỗi mạng / HTTP lỗi.
-  async function fetchViaWorker(platform, url) {
-    if (!WORKER_BASE) return null;
-    const ctrl = new AbortController();
-    const id = setTimeout(() => ctrl.abort(), WORKER_TIMEOUT_MS);
-    try {
-      const headers = {};
-      if (typeof WORKER_TOKEN === "string" && WORKER_TOKEN) {
-        headers.Authorization = "Bearer " + WORKER_TOKEN;
-      }
-      if (platform === "instagram") {
-        const c = getIgCookie();
-        if (c) headers["X-IG-Cookie"] = c;
-      } else if (platform === "facebook") {
-        const c = getFbCookie();
-        if (c) headers["X-FB-Cookie"] = c;
-      }
-      const res = await fetch(
-        `${WORKER_BASE}/api/${platform}?url=${encodeURIComponent(url)}`,
-        { signal: ctrl.signal, headers },
-      );
-      clearTimeout(id);
-      if (!res.ok) return null;
-      const j = await res.json();
-      if (!j || !j.ok) return null;
-      // Chuẩn hoá về cấu trúc giống các nhánh khác để render chung.
-      return {
-        type: j.type,
-        url: j.url,
-        // tunnelUrl: Worker proxy cho media URL (fix "Bad URL hash" từ IG/FB CDN).
-        // Frontend nên dùng tunnelUrl để hiển thị + tải, không dùng url trực tiếp.
-        tunnelUrl: j.tunnelUrl || j.url,
-        items: Array.isArray(j.items) ? j.items.map((it) => ({
-          ...it,
-          tunnelUrl: it.tunnelUrl || it.url,
-        })) : undefined,
-        title: j.title || "",
-        author: j.author || "",
-        authorAvatar: j.authorAvatar || "",
-        thumbnail: j.thumbnail || "",
-        thumbnailTunnelUrl: j.thumbnailTunnelUrl || j.thumbnail || "",
-        duration: j.duration || null,
-        platform: j.platform || platform,
-      };
-    } catch (_) {
-      clearTimeout(id);
-      return null;
-    }
-  }
 
   const PLATFORM_PATTERNS = {
     tiktok: /(?:^|\.)tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com/i,
-    instagram: /(?:^|\.)instagram\.com|ddinstagram\.com/i,
-    facebook: /(?:^|\.)facebook\.com|fb\.watch|fb\.com/i,
   };
 
   function detectPlatform(rawUrl) {
@@ -169,12 +62,6 @@
     return res.json();
   }
 
-  async function fetchText(url, opts) {
-    const res = await fetchWithTimeout(url, opts);
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return res.text();
-  }
-
   // ---------- TikTok ----------
   async function fetchTikTok(url) {
     const api = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
@@ -208,286 +95,8 @@
     };
   }
 
-  // Lọc URL media từ một đoạn HTML/JSON (link mp4 hoặc ảnh CDN của IG/FB).
-  function harvestMediaFromHtml(html) {
-    const found = { videos: [], images: [] };
-    const seen = new Set();
-    const push = (arr, u) => { if (u && !seen.has(u)) { seen.add(u); arr.push(u); } };
-
-    // Bóc link "href=" trong các nút download (snapinsta / saveig / snapsave).
-    const hrefRe = /href=["']([^"']+)["']/gi;
-    let m;
-    while ((m = hrefRe.exec(html)) !== null) {
-      const raw = decodeHtml(unescapeJson(m[1]));
-      if (/^https?:\/\//i.test(raw) && /(\.mp4|\.jpg|\.jpeg|\.png|\.webp)(\?|$)/i.test(raw)) {
-        if (/\.mp4(\?|$)/i.test(raw)) push(found.videos, raw);
-        else push(found.images, raw);
-      }
-      // CDN của Instagram / Facebook (scontent / cdninstagram / fbcdn)
-      if (/^https?:\/\//i.test(raw) && /(cdninstagram|fbcdn|scontent)/i.test(raw)) {
-        if (/\.mp4/i.test(raw)) push(found.videos, raw);
-        else if (/\.(jpg|jpeg|png|webp)/i.test(raw)) push(found.images, raw);
-      }
-    }
-
-    // Bóc các url MP4 trần trong JSON-trong-HTML (snapsave trả về JSON.html chứa <a>).
-    const mp4Re = /(https?:\\?\/\\?\/[^"'\s\\]+\.mp4[^"'\s\\]*)/gi;
-    while ((m = mp4Re.exec(html)) !== null) push(found.videos, unescapeJson(m[1]));
-
-    // og:video / og:image cuối cùng.
-    const ogV = html.match(/property=["']og:video["']\s+content=["']([^"']+)["']/i);
-    if (ogV) push(found.videos, decodeHtml(ogV[1]));
-    const ogI = html.match(/property=["']og:image["']\s+content=["']([^"']+)["']/i);
-    if (ogI) push(found.images, decodeHtml(ogI[1]));
-
-    return found;
-  }
-
-  function pickTitleFromHtml(html) {
-    const og = html.match(/property=["']og:title["']\s+content=["']([^"']+)["']/i);
-    if (og) return decodeHtml(og[1]);
-    const t = html.match(/<title>([^<]+)<\/title>/i);
-    return t ? decodeHtml(t[1]) : "";
-  }
-
-  // ---------- snapsave decryption (FB + IG) ----------
-  // Port từ https://github.com/ahmedrangel/snapsave-media-downloader
-  // snapsave.app trả về JS đã obfuscate; cần decode rồi parse HTML bên trong.
-  function escapeRe(s) {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-  function decodeSnapApp(args) {
-    const [h, , n, t, e] = args;
-    const tNum = Number(t);
-    const eNum = Number(e);
-    const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/";
-    const toNum = (d, base) => d.split("").reverse().reduce((a, b, c) => {
-      const idx = alphabet.indexOf(b);
-      return idx !== -1 && idx < base ? a + idx * Math.pow(base, c) : a;
-    }, 0);
-
-    let result = "";
-    const delim = n[eNum];
-    for (let i = 0; i < h.length;) {
-      let s = "";
-      while (i < h.length && h[i] !== delim) { s += h[i]; i++; }
-      i++;
-      for (let j = 0; j < n.length; j++) {
-        s = s.replace(new RegExp(escapeRe(n[j]), "g"), String(j));
-      }
-      result += String.fromCharCode(toNum(s, eNum) - tNum);
-    }
-    try {
-      const bytes = new Uint8Array([...result].map((c) => c.charCodeAt(0)));
-      return new TextDecoder("utf-8").decode(bytes);
-    } catch { return result; }
-  }
-  function extractSnapArgs(data) {
-    const tail = data.split("decodeURIComponent(escape(r))}(")[1];
-    if (!tail) throw new Error("snapsave: không tìm thấy payload");
-    return tail.split("))")[0].split(",").map((v) => v.replace(/"/g, "").trim());
-  }
-  function decryptSnapSave(data) {
-    const err = data.split('document.querySelector("#alert").innerHTML = "')[1]?.split('";')[0]?.trim();
-    if (err) throw new Error(err);
-    const decoded = decodeSnapApp(extractSnapArgs(data));
-    const partA = decoded.split('getElementById("download-section").innerHTML = "')[1];
-    if (!partA) throw new Error("snapsave: response không như mong đợi");
-    return partA.split('"; document.getElementById("inputData").remove(); ')[0].replace(/\\(\\)?/g, "");
-  }
-  async function callSnapsave(targetUrl) {
-    const endpoint = "https://snapsave.app/action.php?lang=en";
-    const body = "url=" + encodeURIComponent(targetUrl);
-    const text = await fetchViaProxies(endpoint, {
-      method: "POST",
-      body,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "Accept": "*/*",
-        "X-Requested-With": "XMLHttpRequest",
-      },
-    });
-    return decryptSnapSave(text);
-  }
-
-  function parseSnapsaveHtml(html, platform) {
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    const desc = doc.querySelector("span.video-des")?.textContent.trim()
-              || doc.querySelector(".video-title, .videotikmate-middle p")?.textContent.trim()
-              || "";
-    const figureThumb = doc.querySelector("article.media figure img")?.getAttribute("src") || "";
-
-    // Pattern A: FB nhiều resolution (table.table)
-    const table = doc.querySelector("table.table");
-    if (table) {
-      const videos = [...table.querySelectorAll("tbody tr")].map((tr) => {
-        const tds = tr.querySelectorAll("td");
-        const resolution = (tds[0]?.textContent || "").trim();
-        let url = tds[2]?.querySelector("a")?.getAttribute("href")
-              || tds[2]?.querySelector("button")?.getAttribute("onclick") || "";
-        const m = /get_progressApi\('(.*?)'\)/.exec(url);
-        if (m) url = "https://snapsave.app" + m[1];
-        return { url, resolution };
-      }).filter((v) => v.url && v.url !== "#");
-      if (videos.length) {
-        return {
-          type: "video",
-          url: videos[0].url,
-          title: desc,
-          thumbnail: figureThumb,
-          platform,
-        };
-      }
-    }
-
-    // Pattern B: IG carousel / post (div.download-items)
-    const items = [...doc.querySelectorAll("div.download-items")].map((el) => {
-      const thumb = el.querySelector(".download-items__thumb img")?.getAttribute("src") || "";
-      const btn = el.querySelector(".download-items__btn");
-      const href = btn?.querySelector("a")?.getAttribute("href") || "";
-      const spanText = btn?.querySelector("span")?.textContent.trim() || "";
-      const isPhoto = /photo|ảnh/i.test(spanText);
-      return { kind: isPhoto ? "image" : "video", url: isPhoto ? thumb : href, thumbnail: thumb };
-    }).filter((it) => it.url);
-    if (items.length === 1) {
-      const it = items[0];
-      return {
-        type: it.kind === "image" ? "image" : "video",
-        url: it.url,
-        thumbnail: it.thumbnail,
-        title: desc,
-        platform,
-      };
-    }
-    if (items.length > 1) {
-      return {
-        type: "carousel",
-        items: items.map((it) => ({ kind: it.kind, url: it.url })),
-        thumbnail: items[0].thumbnail,
-        title: desc,
-        platform,
-      };
-    }
-
-    // Pattern C: div.card (FB single)
-    const cards = [...doc.querySelectorAll("div.card")];
-    if (cards.length) {
-      const cardItems = cards.map((el) => {
-        const a = el.querySelector(".card-body a, a");
-        const url = a?.getAttribute("href") || "";
-        const txt = (a?.textContent || "").trim();
-        return { kind: /photo|ảnh/i.test(txt) ? "image" : "video", url };
-      }).filter((it) => it.url && it.url !== "#");
-      if (cardItems.length === 1) {
-        return { type: cardItems[0].kind, url: cardItems[0].url, title: desc, thumbnail: figureThumb, platform };
-      }
-      if (cardItems.length > 1) {
-        return { type: "carousel", items: cardItems, title: desc, thumbnail: figureThumb, platform };
-      }
-    }
-
-    // Pattern D: chỉ có 1 link <a>
-    const firstA = doc.querySelector("a[href^='http']");
-    if (firstA) {
-      const txt = (firstA.textContent || "").trim();
-      const kind = /photo|ảnh/i.test(txt) ? "image" : "video";
-      return { type: kind, url: firstA.getAttribute("href"), title: desc, thumbnail: figureThumb, platform };
-    }
-    return null;
-  }
-
-  // ---------- Instagram ----------
-  async function fetchInstagram(url) {
-    // Worker là nhánh chính: gọi thẳng, không qua CORS proxy.
-    const fromWorker = await fetchViaWorker("instagram", url);
-    if (fromWorker) return fromWorker;
-
-    try {
-      const html = await callSnapsave(url);
-      const data = parseSnapsaveHtml(html, "instagram");
-      if (data) return data;
-    } catch (_) { /* fallback */ }
-
-    // Fallback: saveig / snapinsta (HTML response, harvest raw href)
-    const fallback = [
-      { endpoint: "https://v3.saveig.app/api/ajaxSearch", body: `q=${encodeURIComponent(url)}&t=media&lang=vi` },
-      { endpoint: "https://snapinsta.app/api/ajaxSearch", body: `q=${encodeURIComponent(url)}&t=media&lang=en` },
-    ];
-    for (const t of fallback) {
-      try {
-        const text = await fetchViaProxies(t.endpoint, {
-          method: "POST",
-          body: t.body,
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "Accept": "*/*",
-            "X-Requested-With": "XMLHttpRequest",
-          },
-        });
-        let html = text;
-        try { const j = JSON.parse(text); html = j.data || j.html || text; } catch (_) {}
-        const { videos, images } = harvestMediaFromHtml(html);
-        if (videos.length) return { type: "video", url: videos[0], title: pickTitleFromHtml(html), thumbnail: images[0] || "", platform: "instagram" };
-        if (images.length === 1) return { type: "image", url: images[0], thumbnail: images[0], title: pickTitleFromHtml(html), platform: "instagram" };
-        if (images.length > 1) return { type: "carousel", items: images.map((u) => ({ kind: "image", url: u })), thumbnail: images[0], title: pickTitleFromHtml(html), platform: "instagram" };
-      } catch (_) { /* tiếp tục */ }
-    }
-
-    throw new Error("Không tải được nội dung Instagram (có thể là tài khoản riêng tư hoặc API tạm lỗi).");
-  }
-
-  // ---------- Facebook ----------
-  async function fetchFacebook(url) {
-    // Worker là nhánh chính: gọi thẳng, không qua CORS proxy.
-    const fromWorker = await fetchViaWorker("facebook", url);
-    if (fromWorker) return fromWorker;
-
-    try {
-      const html = await callSnapsave(url);
-      const data = parseSnapsaveHtml(html, "facebook");
-      if (data) return data;
-    } catch (_) { /* fallback */ }
-
-    // Fallback: getmyfb / fdownloader (sister sites, snap-style)
-    const fallback = [
-      { endpoint: "https://getmyfb.com/api/ajaxSearch", body: `q=${encodeURIComponent(url)}&t=media&lang=vi` },
-      { endpoint: "https://fdownloader.net/api/ajaxSearch", body: `q=${encodeURIComponent(url)}&t=media&lang=vi` },
-    ];
-    for (const t of fallback) {
-      try {
-        const text = await fetchViaProxies(t.endpoint, {
-          method: "POST",
-          body: t.body,
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "Accept": "*/*",
-            "X-Requested-With": "XMLHttpRequest",
-          },
-        });
-        let html = text;
-        try { const j = JSON.parse(text); html = j.data || j.html || text; } catch (_) {}
-        const { videos, images } = harvestMediaFromHtml(html);
-        if (videos.length) return { type: "video", url: videos[0], title: pickTitleFromHtml(html), thumbnail: images[0] || "", platform: "facebook" };
-        if (images.length) return { type: "image", url: images[0], thumbnail: images[0], title: pickTitleFromHtml(html), platform: "facebook" };
-      } catch (_) { /* tiếp tục */ }
-    }
-
-    throw new Error("Không tải được video Facebook (có thể là nội dung riêng tư hoặc API tạm lỗi).");
-  }
-
-  function decodeHtml(s) {
-    const el = document.createElement("textarea");
-    el.innerHTML = s;
-    return el.value;
-  }
-  function unescapeJson(s) {
-    return s.replace(/\\u0025/g, "%").replace(/\\\//g, "/").replace(/\\u0026/g, "&");
-  }
-
   const HANDLERS = {
     tiktok: fetchTikTok,
-    instagram: fetchInstagram,
-    facebook: fetchFacebook,
   };
 
   // ---------- Download helper ----------
@@ -539,11 +148,9 @@
       data.items.forEach((item, i) => {
         const cell = document.createElement("div");
         cell.className = "carousel-item";
-        // Dùng tunnelUrl để render (fix Bad URL hash cho IG/FB CDN).
-        const src = item.tunnelUrl || item.url;
         const node = item.kind === "video"
-          ? Object.assign(document.createElement("video"), { src, controls: true, playsInline: true })
-          : Object.assign(document.createElement("img"), { src, alt: "" });
+          ? Object.assign(document.createElement("video"), { src: item.url, controls: true, playsInline: true })
+          : Object.assign(document.createElement("img"), { src: item.url, alt: "" });
         cell.appendChild(node);
         const a = document.createElement("a");
         a.className = "item-dl";
@@ -553,7 +160,7 @@
         const fname = `leakred-${data.platform}-${i + 1}.${ext}`;
         a.addEventListener("click", (e) => {
           e.preventDefault();
-          triggerDownload(item.tunnelUrl || item.url, fname);
+          triggerDownload(item.url, fname);
         });
         cell.appendChild(a);
         grid.appendChild(cell);
@@ -572,7 +179,7 @@
         for (let i = 0; i < data.items.length; i++) {
           const it = data.items[i];
           const ext = inferExt(it.url, it.kind === "image" ? "jpg" : "mp4");
-          await triggerDownload(it.tunnelUrl || it.url, `leakred-${data.platform}-${i + 1}.${ext}`);
+          await triggerDownload(it.url, `leakred-${data.platform}-${i + 1}.${ext}`);
           await new Promise((r) => setTimeout(r, 400));
         }
       });
@@ -583,13 +190,12 @@
     }
 
     const isVideo = data.type === "video";
-    const mediaSrc = data.tunnelUrl || data.url;
     const media = isVideo
       ? Object.assign(document.createElement("video"), {
-          src: mediaSrc, controls: true, playsInline: true,
-          poster: data.thumbnailTunnelUrl || data.thumbnail || "",
+          src: data.url, controls: true, playsInline: true,
+          poster: data.thumbnail || "",
         })
-      : Object.assign(document.createElement("img"), { src: mediaSrc, alt: data.title || "" });
+      : Object.assign(document.createElement("img"), { src: data.url, alt: data.title || "" });
     media.className = "result-media";
     resultEl.appendChild(media);
 
@@ -605,7 +211,7 @@
     dl.innerHTML = `<span class="btn-label">${isVideo ? "Tải video" : "Tải ảnh"}</span>`;
     const ext = inferExt(data.url, isVideo ? "mp4" : "jpg");
     const fname = buildFilename(data.platform, isVideo ? "video" : "image").replace(/\.(mp4|jpg)$/, "." + ext);
-    dl.addEventListener("click", () => triggerDownload(data.tunnelUrl || data.url, fname));
+    dl.addEventListener("click", () => triggerDownload(data.url, fname));
     actions.appendChild(dl);
 
     if (data.thumbnail && isVideo) {
@@ -614,7 +220,7 @@
       thumbBtn.innerHTML = `<span class="btn-label">Tải ảnh bìa</span>`;
       thumbBtn.addEventListener("click", () => {
         const tExt = inferExt(data.thumbnail, "jpg");
-        triggerDownload(data.thumbnailTunnelUrl || data.thumbnail, buildFilename(data.platform, "image").replace(/\.jpg$/, "." + tExt));
+        triggerDownload(data.thumbnail, buildFilename(data.platform, "image").replace(/\.jpg$/, "." + tExt));
       });
       actions.appendChild(thumbBtn);
     }
@@ -674,7 +280,7 @@
 
     const platform = detectPlatform(url);
     if (!platform) {
-      return showToast("Link không hỗ trợ. Chỉ nhận TikTok / Instagram / Facebook.", "error");
+      return showToast("Link không hỗ trợ. Chỉ nhận link TikTok.", "error");
     }
 
     downloadBtn.disabled = true;
@@ -682,7 +288,7 @@
     resultEl.classList.add("hidden");
 
     try {
-      const data = ensureTunnelUrls(await HANDLERS[platform](url));
+      const data = await HANDLERS[platform](url);
       renderResult(data);
       showToast("Đã sẵn sàng — bấm Tải để lưu về máy.", "success");
       resultEl.scrollIntoView({ behavior: "smooth", block: "start" });
