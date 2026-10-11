@@ -17,6 +17,8 @@
     (u) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
     (u) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
   ];
+  // Cloudflare Worker riêng của Leakred (gọi trực tiếp, có CORS) — nguồn Instagram chính.
+  const WORKER_BASE = "https://leakred-downloader.lequan04102003.workers.dev";
   const FETCH_TIMEOUT_MS = 18000;
   const PROXY_FETCH_TIMEOUT_MS = 8000;
   const EMBED_FETCH_TIMEOUT_MS = 15000;
@@ -219,6 +221,39 @@
     return { type: "carousel", items, thumbnail: items[0].thumbnail || "", ...extra };
   }
 
+  // Phân loại ảnh / video theo link gốc nằm trong token snapcdn / rapidcdn.
+  function snapMediaKind(href, fallback) {
+    const target = snapTokenTarget(href);
+    if (/\.(mp4|mov|webm)(\?|\s|$)/i.test(target)) return "video";
+    if (/\.(jpe?g|png|webp|heic)(\?|\s|$)/i.test(target)) return "image";
+    return fallback;
+  }
+
+  // Worker: GET /api/instagram?url= → { ok, source, type, url, thumbnail, items? }.
+  async function fetchInstagramWorker(cleanUrl) {
+    const res = await fetchWithTimeout(`${WORKER_BASE}/api/instagram?url=${encodeURIComponent(cleanUrl)}`);
+    const j = await res.json().catch(() => null);
+    if (!j || !j.ok) throw new Error("worker: " + (j?.error || "HTTP " + res.status));
+    // Nguồn "og" chỉ có ảnh thumbnail, không phải media thật.
+    if (j.source === "og") throw new Error("worker: chỉ có thumbnail");
+    const raw = Array.isArray(j.items) && j.items.length
+      ? j.items
+      : [{ kind: j.type, url: j.url, thumbnail: j.thumbnail }];
+    const items = raw.filter((it) => it && it.url).map((it) => ({
+      kind: snapMediaKind(it.url, it.kind === "image" ? "image" : "video"),
+      url: it.url,
+      thumbnail: it.thumbnail || "",
+    }));
+    const data = buildMediaResult(items, {
+      title: j.title || "",
+      author: j.author || "",
+      authorAvatar: j.authorAvatar || "",
+      platform: "instagram",
+    });
+    if (!data) throw new Error("worker: không có media");
+    return data;
+  }
+
   // indown.net: trả JSON { status, data: "<ul class=download-box>..." } chứa link snapcdn.
   async function fetchInstagramIndown(cleanUrl) {
     const body = new URLSearchParams({ q: cleanUrl, vt: "reel", t: "media", lang: "en", v: "v2" }).toString();
@@ -250,12 +285,7 @@
         let kind = null;
         if (/video|mp4|reel/i.test(label)) kind = "video";
         else if (/photo|image|ảnh/i.test(label)) kind = "image";
-        if (!kind) {
-          const target = snapTokenTarget(href);
-          if (/\.(mp4|mov|webm)(\?|\s|$)/i.test(target)) kind = "video";
-          else if (/\.(jpe?g|png|webp|heic)(\?|\s|$)/i.test(target)) kind = "image";
-        }
-        return { href, kind: kind || (/\.mp4(\?|$)/i.test(href) ? "video" : "image") };
+        return { href, kind: kind || snapMediaKind(href, /\.mp4(\?|$)/i.test(href) ? "video" : "image") };
       }).filter((l) => l.href && !seen.has(l.href));
       if (!links.length) return;
       // Với video, nút "Download Image" chỉ là ảnh bìa → ưu tiên link video.
@@ -336,6 +366,10 @@
     const cleanUrl = cleanInstagramUrl(url);
     const shortcode = instagramShortcode(cleanUrl);
     let reason = "";
+
+    try {
+      return await fetchInstagramWorker(cleanUrl);
+    } catch (_) { /* fallback */ }
 
     try {
       return await fetchInstagramIndown(cleanUrl);
