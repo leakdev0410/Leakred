@@ -26,6 +26,8 @@
       body = null,
       headers = {},
       parseJson = false,
+      validate = null,
+      timeoutMs: callTimeoutMs = timeoutMs,
     } = {}) {
       const controllers = proxyBuilders.map(() => new AbortController());
       const attempts = proxyBuilders.map((buildProxy, index) => {
@@ -38,19 +40,25 @@
             if (!res.ok) throw new Error("HTTP " + res.status);
             const text = await res.text();
             if (!text) throw new Error("Empty body");
-            if (!parseJson) return text;
-            try {
-              return JSON.parse(text);
-            } catch {
-              throw new Error("Bad JSON");
+            let result = text;
+            if (parseJson) {
+              try {
+                result = JSON.parse(text);
+              } catch {
+                throw new Error("Bad JSON");
+              }
             }
+            // Proxy có thể trả 200 nhưng nội dung sai (trang chặn, UA khác…):
+            // loại nó để các proxy còn lại tiếp tục đua.
+            if (validate && !validate(result)) throw new Error("Invalid body");
+            return result;
           });
         let timeoutId;
         const deadline = new Promise((_, reject) => {
           timeoutId = setTimeout(() => {
             controller.abort();
             reject(new Error("Proxy request timed out"));
-          }, timeoutMs);
+          }, callTimeoutMs);
         });
 
         return Promise.race([response, deadline]).finally(() => clearTimeout(timeoutId));
