@@ -106,3 +106,39 @@ test("rejects when every proxy fails without AggregateError support", async () =
     global.AggregateError = aggregateError;
   }
 });
+
+test("skips a proxy whose body fails validation and waits for a valid one", async () => {
+  const fetchViaProxies = createProxyFetcher({
+    proxyBuilders: [
+      (url) => `https://wrong.example/?${url}`,
+      (url) => `https://right.example/?${url}`,
+    ],
+    fetchImpl: async (url) => {
+      if (url.startsWith("https://wrong.example")) return response("login wall");
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return response("has media");
+    },
+    timeoutMs: 1_000,
+  });
+
+  const result = await fetchViaProxies("https://provider.example/media", {
+    validate: (text) => text.includes("media"),
+  });
+  assert.equal(result, "has media");
+});
+
+test("uses a per-call timeout override", async () => {
+  const fetchViaProxies = createProxyFetcher({
+    proxyBuilders: [(url) => `https://slow.example/?${url}`],
+    fetchImpl: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      return response("late but fine");
+    },
+    timeoutMs: 10,
+  });
+
+  assert.equal(
+    await fetchViaProxies("https://provider.example/media", { timeoutMs: 1_000 }),
+    "late but fine",
+  );
+});
